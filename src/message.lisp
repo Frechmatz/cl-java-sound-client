@@ -102,21 +102,13 @@
   ;; signed short 2 bytes DataInputStream readShort
   (lisp-binary:write-integer channel-count 2 stream :byte-order :big-endian :signed t))
 
-(defun write-frame-count (stream frame-count)
-  ;; signed int 4 bytes DataInputStream readInt
-  (lisp-binary:write-integer frame-count 4 stream :byte-order :big-endian :signed t))
-
 (defun read-frame-count (stream)
   ;; signed int 4 bytes DataInputStream readInt
   (lisp-binary:read-integer 4 stream :byte-order :big-endian :signed t))
 
-(defun write-sample-count (stream sample-count)
+(defun write-sample-data-length (stream sample-data-length)
   ;; signed int 4 bytes DataInputStream readInt
-  (lisp-binary:write-integer sample-count 4 stream :byte-order :big-endian :signed t))
-
-(defun read-sample-count (stream)
-  ;; signed int 4 bytes DataInputStream readInt
-  (lisp-binary:read-integer 4 stream :byte-order :big-endian :signed t))
+  (lisp-binary:write-integer sample-data-length 4 stream :byte-order :big-endian :signed t))
 
 (defun write-sample-rate (stream sample-rate)
   ;; signed int 4 bytes DataInputStream readInt
@@ -197,10 +189,10 @@
   (force-output stream)
   (format t "~%Outbound: StopMessage"))
 
-(defun write-frames-message-header (stream &key sample-count)
+(defun write-frames-message-header (stream &key sample-data-length)
   (write-message-type stream +MESSAGE-TYPE-FRAMES+)
-  (write-sample-count stream sample-count)
-  (format t "~%Outbound: FramesMessage{sample-count=~a}" sample-count))
+  (write-sample-data-length stream sample-data-length)
+  (format t "~%Outbound: FramesMessage{sample-count=~a}" sample-data-length))
 
 (defun write-close-message (stream)
   (write-message-type stream +MESSAGE-TYPE-CLOSE+)

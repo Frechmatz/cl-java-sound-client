@@ -18,6 +18,7 @@
 (defun main()
   (let* ((channel-count 2)
 	 (sample-rate 44100)
+	 (sample-width 2)
 	 (duration-seconds 5)
 	 (max-frame-count (* duration-seconds sample-rate))
 	 (phase-generator (make-phase-generator sample-rate))
@@ -38,7 +39,7 @@
 		      (setf cur-frame-count (+ cur-frame-count frame-count))
 		      (cl-java-sound-client-message:write-frames-message-header
 		       stream
-		       :sample-count (* frame-count channel-count))
+		       :sample-data-length (* frame-count channel-count sample-width))
 		      (dotimes (i frame-count)
 			(let ((sample (sin (funcall phase-generator 440.0))))
 			  (dotimes (i channel-count)
