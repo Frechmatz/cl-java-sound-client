@@ -18,14 +18,22 @@
 (defun main()
   (let* ((channel-count 2)
 	 (sample-rate 44100)
-	 (sample-width 2)
+;;	 (sample-width 2)
 	 (duration-seconds 5)
 	 (max-frame-count (* duration-seconds sample-rate))
 	 (phase-generator (make-phase-generator sample-rate))
 	 (socket (usocket:socket-connect "localhost" 9000 :element-type '(unsigned-byte 8))))
     (format t "~%Connected")
     (let ((stream (usocket:socket-stream socket)) (cur-frame-count 0))
-      (flet ((process-message ()
+      (labels ((write-samples (frame-count)
+		 (let ((os (flexi-streams:make-in-memory-output-stream
+			    :element-type '(unsigned-byte 8))))
+		   (dotimes (i frame-count)
+		     (let ((sample (sin (funcall phase-generator 440.0))))
+		       (dotimes (i channel-count)
+			 (cl-java-sound-client-message:write-sample os sample))))
+		   (flexi-streams:get-output-stream-sequence os)))
+	     (process-message ()
 	       (let ((message (cl-java-sound-client-message:read-message stream)))
 		 (cond
 		   ((cl-java-sound-client-message:get-frames-message-p message)
@@ -37,13 +45,9 @@
 				 :format-arguments (list max-frame-count))))
 		    (let ((frame-count (getf message :frame-count)))
 		      (setf cur-frame-count (+ cur-frame-count frame-count))
-		      (cl-java-sound-client-message:write-frames-message-header
-		       stream
-		       :sample-data-length (* frame-count channel-count sample-width))
-		      (dotimes (i frame-count)
-			(let ((sample (sin (funcall phase-generator 440.0))))
-			  (dotimes (i channel-count)
-			    (cl-java-sound-client-message:write-sample stream sample)))))
+		      (let ((bytes (write-samples frame-count)))
+			(cl-java-sound-client-message:write-frames-message
+			 stream :sample-data bytes)))
 		    (force-output stream))
 		   (t
 		    (error 'simple-error

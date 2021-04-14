@@ -189,10 +189,11 @@
   (force-output stream)
   (format t "~%Outbound: StopMessage"))
 
-(defun write-frames-message-header (stream &key sample-data-length)
+(defun write-frames-message (stream &key sample-data)
   (write-message-type stream +MESSAGE-TYPE-FRAMES+)
-  (write-sample-data-length stream sample-data-length)
-  (format t "~%Outbound: FramesMessage{sample-count=~a}" sample-data-length))
+  (write-sample-data-length stream (length sample-data))
+  (write-sequence sample-data stream)
+  (format t "~%Outbound: FramesMessage{sample-count=~a}" (length sample-data)))
 
 (defun write-close-message (stream)
   (write-message-type stream +MESSAGE-TYPE-CLOSE+)

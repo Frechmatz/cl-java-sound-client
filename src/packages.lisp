@@ -9,7 +9,7 @@
    :write-start-message
    :write-stop-message
    :write-close-message
-   :write-frames-message-header
+   :write-frames-message
    :write-sample
    :ack-message-p
    :nak-message-p
