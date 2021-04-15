@@ -52,7 +52,6 @@
 (defgeneric send-stop-message (connection))
 (defgeneric send-frames-message (connection frames-builder))
 (defgeneric close-connection (connection))
-(defgeneric abort-connection (connection))
 
 ;;
 ;; Controller
@@ -152,7 +151,7 @@
 	  (make-frames-builder)))
 	(t
 	 (error 'simple-error
-		:format-control "Unsupported message sent from server ~a"
+		:format-control "Unsupported message sent by server: ~a"
 		:format-arguments (list message))))))
   nil)
 

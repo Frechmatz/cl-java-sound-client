@@ -1,7 +1,5 @@
 (in-package :cl-java-sound-client-message)
 
-
-
 (defconstant +MESSAGE-TYPE-ACK+ 1)
 (defconstant +MESSAGE-TYPE-NAK+ 2)
 (defconstant +MESSAGE-TYPE-FRAMES+ 3)
@@ -169,6 +167,9 @@
       (format t "~%Inbound: ~a" message)
       message)))
 
+;;
+;;
+;;
 
 (defun write-init-message (stream &key sample-rate channel-count buffer-size)
   (write-message-type stream +MESSAGE-TYPE-INIT+)
@@ -182,21 +183,21 @@
 (defun write-start-message (stream)
   (write-message-type stream +MESSAGE-TYPE-START+)
   (force-output stream)
-  (format t "~%Outbound: StartMessage"))
+  (format t "~%Outbound: StartMessage{}"))
   
 (defun write-stop-message (stream)
   (write-message-type stream +MESSAGE-TYPE-STOP+)
   (force-output stream)
-  (format t "~%Outbound: StopMessage"))
+  (format t "~%Outbound: StopMessage{}"))
 
 (defun write-frames-message (stream &key sample-data)
   (write-message-type stream +MESSAGE-TYPE-FRAMES+)
   (write-sample-data-length stream (length sample-data))
   (write-sequence sample-data stream)
   (force-output stream)
-  (format t "~%Outbound: FramesMessage{sample-count=~a}" (length sample-data)))
+  (format t "~%Outbound: FramesMessage{sample-data-length=~a}" (length sample-data)))
 
 (defun write-close-message (stream)
   (write-message-type stream +MESSAGE-TYPE-CLOSE+)
   (force-output stream)
-  (format t "~%Outbound: CloseMessage"))
+  (format t "~%Outbound: CloseMessage{}"))
