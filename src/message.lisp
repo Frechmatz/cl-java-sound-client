@@ -193,6 +193,7 @@
   (write-message-type stream +MESSAGE-TYPE-FRAMES+)
   (write-sample-data-length stream (length sample-data))
   (write-sequence sample-data stream)
+  (force-output stream)
   (format t "~%Outbound: FramesMessage{sample-count=~a}" (length sample-data)))
 
 (defun write-close-message (stream)
