@@ -74,7 +74,8 @@
 
 (defgeneric notify-frames-requested (controller frame-count frames-builder)
   (:documentation
-   "Is called when controller is supposed to send audio data to the server."))
+   "Is called when controller is supposed to send audio data to the server.
+    frame-count represents a recommended frame count to be sent back to the server."))
 
 (defgeneric notify-connection-closed (controller)
   (:documentation
@@ -149,12 +150,13 @@
      (slot-value instance 'stream))))
 
 (defmethod send-init-session-data ((instance connection))
-  (let ((stream (slot-value instance 'stream)))
-    (let ((data (make-array 128 :element-type '(unsigned-byte 8) :initial-element 0)))
-      (setf (aref data 0) 1)
-      (setf (aref data 1) 1)
-      (write-sequence data stream)
-      (force-output stream))))
+  (bt:with-lock-held ((slot-value instance 'send-message-lock))
+    (let ((stream (slot-value instance 'stream)))
+      (let ((data (make-array 128 :element-type '(unsigned-byte 8) :initial-element 0)))
+	(setf (aref data 0) 1)
+	(setf (aref data 1) 1)
+	(write-sequence data stream)
+	(force-output stream)))))
 
 (defmethod start-event-loop
     ((instance connection)
@@ -198,7 +200,7 @@
       (make-frames-builder)))
     (t
      (error 'simple-error
-	    :format-control "Unsupported message sent by server: ~a"
+	    :format-control "Dont know how to handle message: ~a"
 	    :format-arguments (list message)))))
 
 ;;
