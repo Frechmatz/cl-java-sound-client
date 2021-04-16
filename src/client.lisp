@@ -198,16 +198,8 @@
 ;; Example
 ;;
 
-(defun make-phase-generator (sample-rate)
-  (let ((phi 0.0))
-    (lambda (frequency)
-      (declare (type single-float frequency))
-      (setf phi (rem (+ phi (/ (* 2 PI frequency) sample-rate)) (* 2 PI)))
-      phi)))
-
 (defclass example-controller (controller)
-  ((max-frame-count :initform nil)
-   (cur-frame-count :initform 0)
+  ((cur-frame-count :initform nil)
    (channel-count :initform 2)
    (sample-width :initform 2)
    (duration-seconds :initarg :duration-seconds)
@@ -215,24 +207,26 @@
    (sample-rate :initform 44100)
    (phase-generator :initform nil)))
 
-(defmethod initialize-instance :after ((instance example-controller) &rest rest)
-  (declare (ignore rest))
-  (setf (slot-value instance 'max-frame-count)
-	(* (slot-value instance 'duration-seconds)
-	   (slot-value instance 'sample-rate)))
-  (setf (slot-value instance 'phase-generator)
-	(make-phase-generator (slot-value instance 'sample-rate))))
-
 (defmethod run ((instance example-controller))
-  (start-event-loop
-   (slot-value instance 'connection)
-   :channel-count (slot-value instance 'channel-count)
-   :sample-rate (slot-value instance 'sample-rate)
-   :sample-width (slot-value instance 'sample-width)
-   :buffer-size (slot-value instance 'buffer-size)))
+  (flet ((make-phase-generator ()
+	   (let ((phi 0.0) (sample-rate (slot-value instance 'sample-rate)))
+	     (lambda (frequency)
+	       (declare (type single-float frequency))
+	       (setf phi (rem (+ phi (/ (* 2 PI frequency) sample-rate)) (* 2 PI)))
+	       phi))))
+    (setf (slot-value instance 'phase-generator) (make-phase-generator))
+    (setf (slot-value instance 'cur-frame-count) 0)
+    (start-event-loop
+     (slot-value instance 'connection)
+     :channel-count (slot-value instance 'channel-count)
+     :sample-rate (slot-value instance 'sample-rate)
+     :sample-width (slot-value instance 'sample-width)
+     :buffer-size (slot-value instance 'buffer-size))))
 
 (defmethod notify-frames-requested ((instance example-controller) frame-count frames-builder)
-  (if (<= (slot-value instance 'max-frame-count) (slot-value instance 'cur-frame-count))
+  (if (<= (* (slot-value instance 'duration-seconds)
+	     (slot-value instance 'sample-rate))
+	  (slot-value instance 'cur-frame-count))
       (close-connection instance)
       (progn
 	(setf (slot-value instance 'cur-frame-count)
