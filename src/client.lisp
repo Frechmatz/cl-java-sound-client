@@ -8,20 +8,16 @@
   (let ((os (flexi-streams:make-in-memory-output-stream
 	     :element-type '(unsigned-byte 8))))
     (list
-     :write-sample
      (lambda (sample)
        (cl-java-sound-client-message:write-sample os sample))
-     :get-samples
      (lambda()
        (flexi-streams:get-output-stream-sequence os)))))
 
 (defun write-sample (frames-builder sample)
-  "TODO Rework"
-  (funcall (second frames-builder) sample))
+  (funcall (first frames-builder) sample))
 
 (defun get-samples (frames-builder)
-  "TODO Rework"
-  (funcall (fourth frames-builder)))
+  (funcall (second frames-builder)))
 
 
 ;;
@@ -59,15 +55,42 @@
 (defclass controller ()
   ((connection :initarg nil)))
 
-(defgeneric stop (controller) (:documentation "Pause playback"))
-(defgeneric start (controller) (:documentation "Continue playback"))
-(defgeneric close-connection (controller))
-(defgeneric frames (controller frames-builder))
-(defgeneric notify-frames-requested (controller frame-count frames-builder))
-(defgeneric notify-connection-closed (controller))
-(defgeneric notify-connection-established (controller))
-(defgeneric run (controller) (:documentation "Mandatory"))
+(defgeneric stop (controller)
+  (:documentation
+   "Pause playback. Sends a Stop message to the server."))
+
+(defgeneric start (controller)
+  (:documentation
+   "Continue playback. Sends a Start message to the server."))
+
+(defgeneric close-connection (controller)
+  (:documentation
+   "Sends a close message to the server in order to indicate that the connection shall be closed."))
+
+(defgeneric frames (controller frames-builder)
+  (:documentation
+   "Sends audio data to the server."))
+
+(defgeneric notify-frames-requested (controller frame-count frames-builder)
+  (:documentation
+   "Is called when controller is supposed to send audio data to the server."))
+
+(defgeneric notify-connection-closed (controller)
+  (:documentation
+   "Is called when the connection to the server has been closed."))
+
+(defgeneric notify-connection-established (controller)
+  (:documentation
+   "Is called when the connection to the server has been established
+    and the server is ready to receive audio data."))
+
+(defgeneric run (controller)
+  (:documentation
+   "Starts the event processing loop. Implementation must call 
+    connection::start-event-loop. Returns when connection has been closed."))
+
 (defun get-controller-connection (controller)
+  "Returns the connection belonging to the given controller."
   (slot-value controller 'connection))
 
 
