@@ -19,7 +19,6 @@
 (defun get-samples (frames-builder)
   (funcall (second frames-builder)))
 
-
 ;;
 ;; Connection
 ;;
@@ -47,6 +46,8 @@
 (defgeneric send-frames-message (connection frames-builder))
 (defgeneric send-init-message (connection &key sample-rate channel-count buffer-size))
 (defgeneric close-connection (connection))
+(defgeneric send-init-session-data (connection))
+
 
 ;;
 ;; Controller
@@ -114,6 +115,7 @@
 	 :element-type '(unsigned-byte 8)))
   (setf (slot-value instance 'stream)
 	(usocket:socket-stream (slot-value instance 'socket)))  
+  (send-init-session-data instance)
   (let ((controller (slot-value instance 'controller)))
     (setf (slot-value controller 'connection) instance)))
 
@@ -145,6 +147,14 @@
   (bt:with-lock-held ((slot-value instance 'send-message-lock))
     (cl-java-sound-client-message:write-close-message
      (slot-value instance 'stream))))
+
+(defmethod send-init-session-data ((instance connection))
+  (let ((stream (slot-value instance 'stream)))
+    (let ((data (make-array 128 :element-type '(unsigned-byte 8) :initial-element 0)))
+      (setf (aref data 0) 1)
+      (setf (aref data 1) 1)
+      (write-sequence data stream)
+      (force-output stream))))
 
 (defmethod start-event-loop
     ((instance connection)
