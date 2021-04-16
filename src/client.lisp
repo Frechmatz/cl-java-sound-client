@@ -35,8 +35,7 @@
    (controller :initarg :controller)
    (socket :initform nil)
    (stream :initform nil)
-   (send-message-lock :initform (bt:make-lock))
-   ))
+   (send-message-lock :initform (bt:make-lock))))
 
 (defgeneric start-event-loop
     (connection
@@ -47,10 +46,11 @@
        buffer-size
      &allow-other-keys))
 
-(defgeneric process-message (connection))
+(defgeneric handle-message (connection message))
 (defgeneric send-start-message (connection))
 (defgeneric send-stop-message (connection))
 (defgeneric send-frames-message (connection frames-builder))
+(defgeneric send-init-message (connection &key sample-rate channel-count buffer-size))
 (defgeneric close-connection (connection))
 
 ;;
@@ -67,7 +67,7 @@
 (defgeneric notify-frames-requested (controller frame-count frames-builder))
 (defgeneric notify-connection-closed (controller))
 (defgeneric notify-connection-established (controller))
-
+(defgeneric run (controller) (:documentation "Mandatory"))
 
 ;;
 ;; Connection Impl
@@ -105,6 +105,13 @@
    (slot-value instance 'stream)
    :sample-data (get-samples frames-builder)))
 
+(defmethod send-init-message ((instance connection) &key sample-rate channel-count buffer-size)
+  (cl-java-sound-client-message:write-init-message
+   (slot-value instance 'stream)
+   :sample-rate sample-rate
+   :channel-count channel-count
+   :buffer-size buffer-size))
+
 (defmethod send-close-message ((instance connection))
   (cl-java-sound-client-message:write-close-message
    (slot-value instance 'stream)))
@@ -121,8 +128,8 @@
   (let ((stream (slot-value instance 'stream)))
     (handler-case
 	(progn
-	  (cl-java-sound-client-message:write-init-message
-	   stream
+	  (send-init-message
+	   instance
 	   :sample-rate sample-rate
 	   :channel-count channel-count
 	   :buffer-size buffer-size)
@@ -130,7 +137,9 @@
 	  (notify-connection-established (slot-value instance 'controller))
 	  (send-start-message instance)
 	  (loop
-	    (process-message instance)))
+	    (handle-message
+	     instance
+	     (cl-java-sound-client-message:read-message stream))))
       (condition (c)
 	(format t "~%Catched error: ~a" c)))
     (format t "~%Closing socket")
@@ -140,20 +149,17 @@
     (notify-connection-closed (slot-value instance 'controller)))
   nil)
 
-(defmethod process-message ((instance connection))
-  (let ((stream (slot-value instance 'stream)))
-    (let ((message (cl-java-sound-client-message:read-message stream)))
-      (cond
-	((cl-java-sound-client-message:get-frames-message-p message)
-	 (notify-frames-requested
-	  (slot-value instance 'controller)
-	  (getf message :frame-count)
-	  (make-frames-builder)))
-	(t
-	 (error 'simple-error
-		:format-control "Unsupported message sent by server: ~a"
-		:format-arguments (list message))))))
-  nil)
+(defmethod handle-message ((instance connection) message)
+  (cond
+    ((cl-java-sound-client-message:get-frames-message-p message)
+     (notify-frames-requested
+      (slot-value instance 'controller)
+      (getf message :frame-count)
+      (make-frames-builder)))
+    (t
+     (error 'simple-error
+	    :format-control "Unsupported message sent by server: ~a"
+	    :format-arguments (list message)))))
 
 ;;
 ;; Controller Impl
@@ -171,13 +177,18 @@
 (defmethod frames ((instance controller) frames-builder)
   (send-frames-message (slot-value instance 'connection) frames-builder))
 
-(defmethod notify-connection-closed ((instance controller))
-  (format t "~%Notify connection closed"))
+(defmethod notify-connection-closed ((instance controller)))
 
-(defmethod notify-connection-established ((instance controller))
-  (format t "~%Notify connection established"))
+(defmethod notify-connection-established ((instance controller)))
   
+(defmethod notify-frames-requested ((instance controller) frame-count frames-builder)
+  (declare (ignore instance frame-count frames-builder))
+  (error "Controller must implement method notify-frames-requested"))
 
+(defmethod run ((instance controller))
+  (declare (ignore instance))
+  (error "Controller must implement method run"))
+  
 ;;
 ;; Example
 ;;
@@ -190,19 +201,30 @@
       phi)))
 
 (defclass example-controller (controller)
-  ((max-frame-count :initform (* 5 44100)) ;; 5 seconds
+  ((max-frame-count :initform nil)
    (cur-frame-count :initform 0)
    (channel-count :initform 2)
-   (phase-generator :initform (make-phase-generator 44100))))
+   (sample-width :initform 2)
+   (duration-seconds :initarg :duration-seconds)
+   (buffer-size :initform 0)
+   (sample-rate :initform 44100)
+   (phase-generator :initform nil)))
 
-(defgeneric lets-go (example-controller))
-(defmethod lets-go ((instance example-controller))
+(defmethod initialize-instance :after ((instance example-controller) &rest rest)
+  (declare (ignore rest))
+  (setf (slot-value instance 'max-frame-count)
+	(* (slot-value instance 'duration-seconds)
+	   (slot-value instance 'sample-rate)))
+  (setf (slot-value instance 'phase-generator)
+	(make-phase-generator (slot-value instance 'sample-rate))))
+
+(defmethod run ((instance example-controller))
   (start-event-loop
    (slot-value instance 'connection)
-   :channel-count 2
-   :sample-rate 44100
-   :sample-width 2
-   :buffer-size 0))
+   :channel-count (slot-value instance 'channel-count)
+   :sample-rate (slot-value instance 'sample-rate)
+   :sample-width (slot-value instance 'sample-width)
+   :buffer-size (slot-value instance 'buffer-size)))
 
 (defmethod notify-frames-requested ((instance example-controller) frame-count frames-builder)
   (if (<= (slot-value instance 'max-frame-count) (slot-value instance 'cur-frame-count))
@@ -219,9 +241,9 @@
 	  (frames instance frames-builder)))))
 
 (defun main ()
-  (let ((my-controller (make-instance 'example-controller)))
+  (let ((my-controller (make-instance 'example-controller :duration-seconds 5)))
     (make-instance 'connection :controller my-controller)
-    (lets-go my-controller))
+    (run my-controller))
   "DONE")
 
 ;;(main)
