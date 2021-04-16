@@ -60,8 +60,8 @@
 (defclass controller ()
   ((connection :initarg nil)))
 
-(defgeneric start (controller))
-(defgeneric stop (controller))
+(defgeneric stop (controller) (:documentation "Pause playback"))
+(defgeneric start (controller) (:documentation "Continue playback"))
 (defgeneric close-connection (controller))
 (defgeneric frames (controller frames-builder))
 (defgeneric notify-frames-requested (controller frame-count frames-builder))
@@ -93,28 +93,33 @@
     (setf (slot-value controller 'connection) instance)))
 
 (defmethod send-start-message ((instance connection))
-  (cl-java-sound-client-message:write-start-message
-   (slot-value instance 'stream)))
+  (bt:with-lock-held ((slot-value instance 'send-message-lock))
+    (cl-java-sound-client-message:write-start-message
+     (slot-value instance 'stream))))
 
 (defmethod send-stop-message ((instance connection))
-  (cl-java-sound-client-message:write-stop-message
-   (slot-value instance 'stream)))
+  (bt:with-lock-held ((slot-value instance 'send-message-lock))
+    (cl-java-sound-client-message:write-stop-message
+     (slot-value instance 'stream))))
 
 (defmethod send-frames-message ((instance connection) frames-builder)
-  (cl-java-sound-client-message:write-frames-message
-   (slot-value instance 'stream)
-   :sample-data (get-samples frames-builder)))
+  (bt:with-lock-held ((slot-value instance 'send-message-lock))
+    (cl-java-sound-client-message:write-frames-message
+     (slot-value instance 'stream)
+     :sample-data (get-samples frames-builder))))
 
 (defmethod send-init-message ((instance connection) &key sample-rate channel-count buffer-size)
-  (cl-java-sound-client-message:write-init-message
-   (slot-value instance 'stream)
-   :sample-rate sample-rate
-   :channel-count channel-count
-   :buffer-size buffer-size))
-
+  (bt:with-lock-held ((slot-value instance 'send-message-lock))
+    (cl-java-sound-client-message:write-init-message
+     (slot-value instance 'stream)
+     :sample-rate sample-rate
+     :channel-count channel-count
+     :buffer-size buffer-size)))
+  
 (defmethod send-close-message ((instance connection))
-  (cl-java-sound-client-message:write-close-message
-   (slot-value instance 'stream)))
+  (bt:with-lock-held ((slot-value instance 'send-message-lock))
+    (cl-java-sound-client-message:write-close-message
+     (slot-value instance 'stream))))
 
 (defmethod start-event-loop
     ((instance connection)
