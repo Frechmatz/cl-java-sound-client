@@ -48,7 +48,7 @@
 
 (defun main ()
   (let ((my-controller (make-instance 'example-controller :duration-seconds 5)))
-    (make-instance 'connection :controller my-controller)
+    (make-instance 'connection :controller my-controller :port 9000 :host "localhost")
     (run my-controller)))
 
 ;;(main)
