@@ -31,14 +31,7 @@
    (stream :initform nil)
    (send-message-lock :initform (bt:make-lock))))
 
-(defgeneric start-event-loop
-    (connection
-     &key
-       channel-count
-       sample-rate
-       sample-width
-       buffer-size
-     &allow-other-keys))
+(defgeneric start-event-loop (connection))
 
 (defgeneric handle-message (connection message))
 (defgeneric send-start-message (connection))
@@ -54,7 +47,11 @@
 ;;
 
 (defclass controller ()
-  ((connection :initarg nil)))
+  ((connection :initform nil)
+   (channel-count :initarg :channel-count)
+   (sample-width :initarg :sample-width :initform 2)
+   (buffer-size ::initarg :buffer-size :initform 0)
+   (sample-rate :initarg :sample-rate :initform 44100)))
 
 (defgeneric stop (controller)
   (:documentation
@@ -88,13 +85,23 @@
 
 (defgeneric run (controller)
   (:documentation
-   "Starts the event processing loop. Implementation must call 
-    connection::start-event-loop. Returns when connection has been closed."))
+   "Starts the event processing loop. Returns when connection has been closed."))
 
 (defun get-controller-connection (controller)
   "Returns the connection belonging to the given controller."
   (slot-value controller 'connection))
 
+(defun get-channel-count (controller)
+  (slot-value controller 'channel-count))
+
+(defun get-sample-width (controller)
+  (slot-value controller 'sample-width))
+
+(defun get-buffer-size (controller)
+  (slot-value controller 'buffer-size))
+
+(defun get-sample-rate (controller)
+  (slot-value controller 'sample-rate))
 
 ;;
 ;; Connection Impl
@@ -158,25 +165,18 @@
 	(write-sequence data stream)
 	(force-output stream)))))
 
-(defmethod start-event-loop
-    ((instance connection)
-     &key
-       channel-count
-       sample-rate
-       sample-width
-       (buffer-size 0)
-     &allow-other-keys)
-  (declare (ignore sample-width))
-  (let ((stream (slot-value instance 'stream)))
+(defmethod start-event-loop ((instance connection))
+  (let ((stream (slot-value instance 'stream))
+	(controller (slot-value instance 'controller)))
     (handler-case
 	(progn
 	  (send-init-message
 	   instance
-	   :sample-rate sample-rate
-	   :channel-count channel-count
-	   :buffer-size buffer-size)
+	   :sample-rate (get-sample-rate controller)
+	   :channel-count (get-channel-count controller)
+	   :buffer-size (get-buffer-size controller))
 	  (expect-ack stream)
-	  (notify-connection-established (slot-value instance 'controller))
+	  (notify-connection-established controller)
 	  (send-start-message instance)
 	  (loop
 	    (handle-message
@@ -188,7 +188,7 @@
     (usocket:socket-close (slot-value instance 'socket))
     (setf (slot-value instance 'socket) nil)
     (setf (slot-value instance 'stream) nil)
-    (notify-connection-closed (slot-value instance 'controller)))
+    (notify-connection-closed controller))
   nil)
 
 (defmethod handle-message ((instance connection) message)
@@ -228,6 +228,5 @@
   (error "Controller must implement method notify-frames-requested"))
 
 (defmethod run ((instance controller))
-  (declare (ignore instance))
-  (error "Controller must implement method run"))
-  
+  (start-event-loop (get-controller-connection instance)))
+

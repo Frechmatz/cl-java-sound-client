@@ -6,40 +6,29 @@
 (in-package :cl-java-sound-client-example-1)
 
 (defclass example-controller (controller)
-  ((cur-frame-count :initform nil)
-   (channel-count :initform 2)
-   (sample-width :initform 2)
+  ((cur-frame-count :initform 0)
    (duration-seconds :initarg :duration-seconds)
-   (buffer-size :initform 0)
-   (sample-rate :initform 44100)
    (phase-generator :initform nil)))
 
-(defmethod run ((instance example-controller))
+(defmethod run :before ((instance example-controller))
   (flet ((make-phase-generator ()
-	   (let ((phi 0.0) (sample-rate (slot-value instance 'sample-rate)))
+	   (let ((phi 0.0) (sample-rate (get-sample-rate instance)))
 	     (lambda (frequency)
 	       (declare (type single-float frequency))
 	       (setf phi (rem (+ phi (/ (* 2 PI frequency) sample-rate)) (* 2 PI)))
 	       phi))))
-    (setf (slot-value instance 'phase-generator) (make-phase-generator))
-    (setf (slot-value instance 'cur-frame-count) 0)
-    (start-event-loop
-     (get-controller-connection instance)
-     :channel-count (slot-value instance 'channel-count)
-     :sample-rate (slot-value instance 'sample-rate)
-     :sample-width (slot-value instance 'sample-width)
-     :buffer-size (slot-value instance 'buffer-size))))
+    (setf (slot-value instance 'phase-generator) (make-phase-generator))))
 
 (defmethod notify-frames-requested ((instance example-controller) frame-count frames-builder)
   (if (<= (* (slot-value instance 'duration-seconds)
-	     (slot-value instance 'sample-rate))
+	     (get-sample-rate instance))
 	  (slot-value instance 'cur-frame-count))
       (close-connection instance)
       (progn
 	(setf (slot-value instance 'cur-frame-count)
 	      (+ (slot-value instance 'cur-frame-count) frame-count))
 	(let ((pg (slot-value instance 'phase-generator))
-	      (channel-count (slot-value instance 'channel-count)))
+	      (channel-count (get-channel-count instance)))
 	  (dotimes (i frame-count)
 	    (let ((sample (sin (funcall pg 440.0))))
 	      (dotimes (i channel-count)
@@ -47,7 +36,13 @@
 	  (frames instance frames-builder)))))
 
 (defun main ()
-  (let ((my-controller (make-instance 'example-controller :duration-seconds 5)))
+  (let ((my-controller
+	  (make-instance
+	   'example-controller
+	   :duration-seconds 5
+	   :sample-rate 44100
+	   :sample-width 2
+	   :channel-count 2)))
     (make-instance 'connection :controller my-controller :port 9000 :host "localhost")
     (run my-controller)))
 

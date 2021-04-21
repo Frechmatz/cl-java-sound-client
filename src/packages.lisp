@@ -2,13 +2,14 @@
   (:use :cl)
   (:export
    :connection
-   :start-event-loop
    :controller
    :run
-   :get-controller-connection
    :stop
    :start
    :close-connection
+   :get-sample-rate
+   :get-channel-count
+   :get-sample-width
    :frames
    :notify-frames-requested
    :notify-connection-closed
