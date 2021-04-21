@@ -31,8 +31,7 @@
    (stream :initform nil)
    (send-message-lock :initform (bt:make-lock))))
 
-(defgeneric start-event-loop (connection))
-
+(defgeneric start-message-loop (connection))
 (defgeneric handle-message (connection message))
 (defgeneric send-start-message (connection))
 (defgeneric send-stop-message (connection))
@@ -40,7 +39,6 @@
 (defgeneric send-init-message (connection &key sample-rate channel-count buffer-size))
 (defgeneric close-connection (connection))
 (defgeneric send-init-session-data (connection))
-
 
 ;;
 ;; Controller
@@ -95,7 +93,6 @@
 (defgeneric run (controller)
   (:documentation
    "Starts the event processing loop. Returns when connection has been closed."))
-
 
 (defun get-controller-connection (controller)
   "Returns the connection belonging to the given controller."
@@ -175,7 +172,7 @@
 	(write-sequence data stream)
 	(force-output stream)))))
 
-(defmethod start-event-loop ((instance connection))
+(defmethod start-message-loop ((instance connection))
   (let ((stream (slot-value instance 'stream))
 	(controller (slot-value instance 'controller)))
     (handler-case
@@ -225,7 +222,6 @@
 (defmethod close-connection ((instance controller))
   (send-close-message (slot-value instance 'connection)))
 
-;; xx
 (defmethod frames ((instance controller))
   (let* ((frames-builder (make-frames-builder))
 	 (channel-count (get-channel-count instance))
@@ -244,7 +240,7 @@
 (defmethod notify-connection-established ((instance controller)))
   
 (defmethod run ((instance controller))
-  (start-event-loop (get-controller-connection instance)))
+  (start-message-loop (get-controller-connection instance)))
 
 (defmethod notify-frames-requested-impl ((instance controller) frame-count)
   (setf (slot-value instance 'requested-frame-count) frame-count)
