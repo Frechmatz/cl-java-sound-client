@@ -3,18 +3,18 @@
   (:export
    :connection
    :controller
-   :run
-   :stop
-   :start
-   :close-connection
    :get-sample-rate
    :get-channel-count
    :get-sample-width
+   :run
+   :stop
+   :start
+   :render-frame
+   :close-connection
    :frames
    :notify-frames-requested
    :notify-connection-closed
-   :notify-connection-established
-   :write-sample))
+   :notify-connection-established))
 
 (defpackage :cl-java-sound-client-message
   (:use :cl)

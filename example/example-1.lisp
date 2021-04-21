@@ -19,22 +19,20 @@
 	       phi))))
     (setf (slot-value instance 'phase-generator) (make-phase-generator))))
 
-(defmethod notify-frames-requested ((instance example-controller) frame-count frames-builder)
+(defmethod notify-frames-requested ((instance example-controller))
   (if (<= (* (slot-value instance 'duration-seconds)
 	     (get-sample-rate instance))
 	  (slot-value instance 'cur-frame-count))
       (close-connection instance)
-      (progn
-	(setf (slot-value instance 'cur-frame-count)
-	      (+ (slot-value instance 'cur-frame-count) frame-count))
-	(let ((pg (slot-value instance 'phase-generator))
-	      (channel-count (get-channel-count instance)))
-	  (dotimes (i frame-count)
-	    (let ((sample (sin (funcall pg 440.0))))
-	      (dotimes (i channel-count)
-		(write-sample frames-builder sample))))
-	  (frames instance frames-builder)))))
+      (frames instance)))
 
+(defmethod render-frame ((instance controller) sample-buffer)
+  (incf (slot-value instance 'cur-frame-count))
+  (let ((sample (sin (funcall (slot-value instance 'phase-generator) 440.0))))
+    (dotimes (i (get-channel-count instance))
+      (setf (aref sample-buffer i) sample)))
+  t)
+  
 (defun main ()
   (let ((my-controller
 	  (make-instance
