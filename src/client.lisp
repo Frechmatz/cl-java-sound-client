@@ -202,6 +202,9 @@
 	    (handle-message
 	     instance
 	     (cl-java-sound-client-message:read-message stream))))
+      (end-of-file (c)
+	(declare (ignore c))
+	(format t "~%Connection closed"))
       (condition (c)
 	(format t "~%Catched error: ~a" c)))
     (format t "~%Closing socket")

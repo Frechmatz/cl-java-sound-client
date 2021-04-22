@@ -125,10 +125,36 @@
   (lisp-binary:write-integer buffer-size 4 stream :byte-order :big-endian :signed t))
 
 ;;
+;; Start/End-Of-Message Marker
+;;
+
+(defparameter *START-OF-MESSAGE-MARKER* (make-array
+				      4
+				      :element-type '(unsigned-byte 8)
+				      :initial-contents '(1 2 3 4)))
+
+(defparameter *END-OF-MESSAGE-MARKER* (make-array
+				      4
+				      :element-type '(unsigned-byte 8)
+				      :initial-contents '(4 3 2 1)))
+
+
+(defun write-marker (stream arr)
+  (dotimes (i (length arr))
+    (write-byte (elt arr i) stream)))
+
+(defun read-marker (stream arr)
+  (dotimes (i (length arr))
+    (let ((b (read-byte stream)))
+      (if (not (eql b (elt arr i)))
+	  (error "Invalid Start/End-Of-Message Marker")))))
+
+;;
 ;;
 ;;
 
 (defun read-message (stream)
+  (read-marker stream *START-OF-MESSAGE-MARKER*)
   (let ((message-type (read-message-type stream)))
     (let ((message
 	    (cond
@@ -164,6 +190,7 @@
 	       (error 'simple-error
 		      :format-control "Unsupported message type ~a"
 		      :format-arguments (list message-type))))))
+      (read-marker stream *END-OF-MESSAGE-MARKER*)
       (format t "~%Inbound: ~a" message)
       message)))
 
@@ -172,32 +199,42 @@
 ;;
 
 (defun write-init-message (stream &key sample-rate channel-count buffer-size)
+  (write-marker stream *START-OF-MESSAGE-MARKER*)
   (write-message-type stream +MESSAGE-TYPE-INIT+)
   (write-sample-rate stream sample-rate)
   (write-channel-count stream channel-count)
   (write-buffer-size stream buffer-size)
+  (write-marker stream *END-OF-MESSAGE-MARKER*)
   (force-output stream)
   (format t "~%Outbound: InitMessage{sample-rate=~a, channel-count=~a, buffer-size=~a}"
 	  sample-rate channel-count buffer-size))
 
 (defun write-start-message (stream)
+  (write-marker stream *START-OF-MESSAGE-MARKER*)
   (write-message-type stream +MESSAGE-TYPE-START+)
+  (write-marker stream *END-OF-MESSAGE-MARKER*)
   (force-output stream)
   (format t "~%Outbound: StartMessage{}"))
   
 (defun write-stop-message (stream)
+  (write-marker stream *START-OF-MESSAGE-MARKER*)
   (write-message-type stream +MESSAGE-TYPE-STOP+)
+  (write-marker stream *END-OF-MESSAGE-MARKER*)
   (force-output stream)
   (format t "~%Outbound: StopMessage{}"))
 
 (defun write-frames-message (stream &key sample-data)
+  (write-marker stream *START-OF-MESSAGE-MARKER*)
   (write-message-type stream +MESSAGE-TYPE-FRAMES+)
   (write-sample-data-length stream (length sample-data))
   (write-sequence sample-data stream)
+  (write-marker stream *END-OF-MESSAGE-MARKER*)
   (force-output stream)
   (format t "~%Outbound: FramesMessage{sample-data-length=~a}" (length sample-data)))
 
 (defun write-close-message (stream)
+  (write-marker stream *START-OF-MESSAGE-MARKER*)
   (write-message-type stream +MESSAGE-TYPE-CLOSE+)
+  (write-marker stream *END-OF-MESSAGE-MARKER*)
   (force-output stream)
   (format t "~%Outbound: CloseMessage{}"))
