@@ -29,16 +29,20 @@
    (controller :initarg :controller)
    (socket :initform nil)
    (stream :initform nil)
-   (send-message-lock :initform (bt:make-lock))))
+   (send-message-lock :initform (bt:make-lock))
+   (requested-frame-count :initform 0)))
 
 (defgeneric start-message-loop (connection))
 (defgeneric handle-message (connection message))
 (defgeneric send-start-message (connection))
 (defgeneric send-stop-message (connection))
-(defgeneric send-frames-message (connection sample-data))
+(defgeneric send-frames-message (connection))
 (defgeneric send-init-message (connection &key sample-rate channel-count buffer-size))
 (defgeneric close-connection (connection))
 (defgeneric send-init-session-data (connection))
+(defun get-controller (connection)
+  (slot-value connection 'controller))
+
 
 ;;
 ;; Controller
@@ -49,8 +53,7 @@
    (channel-count :initarg :channel-count)
    (sample-width :initarg :sample-width :initform 2)
    (buffer-size ::initarg :buffer-size :initform 0)
-   (sample-rate :initarg :sample-rate :initform 44100)
-   (requested-frame-count :initform 0)))
+   (sample-rate :initarg :sample-rate :initform 44100)))
 
 (defgeneric stop (controller)
   (:documentation
@@ -73,8 +76,6 @@
    "Is called when controller is supposed to send audio data to the server. Must be implemented
     by a controller."))
 
-(defgeneric notify-frames-requested-impl (controller frame-count))
-
 (defgeneric render-frame (controller sample-buffer)
   (:documentation
    "Render a frame. Must be implemented by a controller.
@@ -93,10 +94,6 @@
 (defgeneric run (controller)
   (:documentation
    "Starts the event processing loop. Returns when connection has been closed."))
-
-(defun get-controller-connection (controller)
-  "Returns the connection belonging to the given controller."
-  (slot-value controller 'connection))
 
 (defun get-channel-count (controller)
   (slot-value controller 'channel-count))
@@ -144,11 +141,21 @@
     (cl-java-sound-client-message:write-stop-message
      (slot-value instance 'stream))))
 
-(defmethod send-frames-message ((instance connection) sample-data)
+(defmethod send-frames-message ((instance connection))
+  ;; TODO Consider to acquire lock right here
+  (let* ((frames-builder (make-frames-builder))
+	 (controller (get-controller instance))
+	 (channel-count (get-channel-count controller))
+	 (sample-buffer (make-array channel-count)))
+    (dotimes (i (slot-value instance 'requested-frame-count))
+      (if (not (render-frame controller sample-buffer))
+	  (return)
+	  (dotimes (i channel-count)
+	    (write-sample frames-builder (elt sample-buffer i)))))
   (bt:with-lock-held ((slot-value instance 'send-message-lock))
     (cl-java-sound-client-message:write-frames-message
      (slot-value instance 'stream)
-     :sample-data sample-data)))
+     :sample-data (get-samples frames-builder)))))
 
 (defmethod send-init-message ((instance connection) &key sample-rate channel-count buffer-size)
   (bt:with-lock-held ((slot-value instance 'send-message-lock))
@@ -201,9 +208,9 @@
 (defmethod handle-message ((instance connection) message)
   (cond
     ((cl-java-sound-client-message:get-frames-message-p message)
-     (notify-frames-requested-impl
-      (slot-value instance 'controller)
-      (getf message :frame-count)))
+     (setf (slot-value instance 'requested-frame-count)
+	   (getf message :frame-count))
+     (notify-frames-requested (slot-value instance 'controller)))
     (t
      (error 'simple-error
 	    :format-control "Dont know how to handle message: ~a"
@@ -223,27 +230,13 @@
   (send-close-message (slot-value instance 'connection)))
 
 (defmethod frames ((instance controller))
-  (let* ((frames-builder (make-frames-builder))
-	 (channel-count (get-channel-count instance))
-	 (sample-buffer (make-array channel-count)))
-    (dotimes (i (slot-value instance 'requested-frame-count))
-      (if (not (render-frame instance sample-buffer))
-	  (return)
-	  (dotimes (i channel-count)
-	    (write-sample frames-builder (elt sample-buffer i)))))
-    (send-frames-message
-     (get-controller-connection instance)
-     (get-samples frames-builder))))
+  (send-frames-message (slot-value instance 'connection)))
 
 (defmethod notify-connection-closed ((instance controller)))
 
 (defmethod notify-connection-established ((instance controller)))
   
 (defmethod run ((instance controller))
-  (start-message-loop (get-controller-connection instance)))
-
-(defmethod notify-frames-requested-impl ((instance controller) frame-count)
-  (setf (slot-value instance 'requested-frame-count) frame-count)
-  (notify-frames-requested instance))
+  (start-message-loop (slot-value instance 'connection)))
 
   
