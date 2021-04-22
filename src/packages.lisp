@@ -1,17 +1,17 @@
 (defpackage :cl-java-sound-client
   (:use :cl)
   (:export
-   :connection
    :controller
-   :get-sample-rate
-   :get-channel-count
-   :get-sample-width
+   :connect
    :run
    :stop
    :start
    :render-frame
    :close-connection
    :frames
+   :get-sample-rate
+   :get-channel-count
+   :get-sample-width
    :notify-frames-requested
    :notify-connection-closed
    :notify-connection-established))
@@ -34,5 +34,5 @@
    :stop-message-p
    :start-message-p
    :close-message-p)
-  (:documentation "Internal package. Can change any time."))
+  (:documentation "Internal package"))
 

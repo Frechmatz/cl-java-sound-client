@@ -10,7 +10,8 @@
    (duration-seconds :initarg :duration-seconds)
    (phase-generator :initform nil)))
 
-(defmethod run :before ((instance example-controller))
+(defmethod initialize-instance :after ((instance example-controller) &rest rest)
+  (declare (ignore rest))
   (flet ((make-phase-generator ()
 	   (let ((phi 0.0) (sample-rate (get-sample-rate instance)))
 	     (lambda (frequency)
@@ -18,7 +19,7 @@
 	       (setf phi (rem (+ phi (/ (* 2 PI frequency) sample-rate)) (* 2 PI)))
 	       phi))))
     (setf (slot-value instance 'phase-generator) (make-phase-generator))))
-
+  
 (defmethod notify-frames-requested ((instance example-controller))
   (if (<= (* (slot-value instance 'duration-seconds)
 	     (get-sample-rate instance))
@@ -41,7 +42,7 @@
 	   :sample-rate 44100
 	   :sample-width 2
 	   :channel-count 2)))
-    (make-instance 'connection :controller my-controller :port 9000 :host "localhost")
+    (connect my-controller :port 9000 :host "localhost")
     (run my-controller)))
 
 ;;(main)

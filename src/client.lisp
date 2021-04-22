@@ -26,7 +26,7 @@
 (defclass connection ()
   ((port :initarg :port :initform 9000)
    (host :initarg :host :initform "localhost")
-   (controller :initarg :controller)
+   (controller :initform nil)
    (socket :initform nil)
    (stream :initform nil)
    (send-message-lock :initform (bt:make-lock))
@@ -91,6 +91,10 @@
    "Is called when the connection to the server has been established
     and the server is ready to receive audio data."))
 
+(defgeneric connect (controller &key host port &allow-other-keys)
+  (:documentation
+   "Connect with server"))
+
 (defgeneric run (controller)
   (:documentation
    "Starts the event processing loop. Returns when connection has been closed."))
@@ -106,6 +110,9 @@
 
 (defun get-sample-rate (controller)
   (slot-value controller 'sample-rate))
+
+(defun get-connection (controller)
+  (slot-value controller 'connection))
 
 ;;
 ;; Connection Impl
@@ -127,9 +134,7 @@
 	 :element-type '(unsigned-byte 8)))
   (setf (slot-value instance 'stream)
 	(usocket:socket-stream (slot-value instance 'socket)))  
-  (send-init-session-data instance)
-  (let ((controller (slot-value instance 'controller)))
-    (setf (slot-value controller 'connection) instance)))
+  (send-init-session-data instance))
 
 (defmethod send-start-message ((instance connection))
   (bt:with-lock-held ((slot-value instance 'send-message-lock))
@@ -142,20 +147,21 @@
      (slot-value instance 'stream))))
 
 (defmethod send-frames-message ((instance connection))
-  ;; TODO Consider to acquire lock right here
-  (let* ((frames-builder (make-frames-builder))
-	 (controller (get-controller instance))
-	 (channel-count (get-channel-count controller))
-	 (sample-buffer (make-array channel-count)))
-    (dotimes (i (slot-value instance 'requested-frame-count))
-      (if (not (render-frame controller sample-buffer))
-	  (return)
-	  (dotimes (i channel-count)
-	    (write-sample frames-builder (elt sample-buffer i)))))
+  ;; Deadlock if controller tries to send a message
+  ;; in render-frame method
   (bt:with-lock-held ((slot-value instance 'send-message-lock))
-    (cl-java-sound-client-message:write-frames-message
-     (slot-value instance 'stream)
-     :sample-data (get-samples frames-builder)))))
+    (let* ((frames-builder (make-frames-builder))
+	   (controller (get-controller instance))
+	   (channel-count (get-channel-count controller))
+	   (sample-buffer (make-array channel-count)))
+      (dotimes (i (slot-value instance 'requested-frame-count))
+	(if (not (render-frame controller sample-buffer))
+	    (return)
+	    (dotimes (i channel-count)
+	      (write-sample frames-builder (elt sample-buffer i)))))
+      (cl-java-sound-client-message:write-frames-message
+       (slot-value instance 'stream)
+       :sample-data (get-samples frames-builder)))))
 
 (defmethod send-init-message ((instance connection) &key sample-rate channel-count buffer-size)
   (bt:with-lock-held ((slot-value instance 'send-message-lock))
@@ -221,22 +227,26 @@
 ;;
 
 (defmethod start ((instance controller))
-  (send-start-message (slot-value instance 'connection)))
+  (send-start-message (get-connection instance)))
 
 (defmethod stop ((instance controller))
-  (send-stop-message (slot-value instance 'connection)))
+  (send-stop-message (get-connection instance)))
 
 (defmethod close-connection ((instance controller))
-  (send-close-message (slot-value instance 'connection)))
+  (send-close-message (get-connection instance)))
 
 (defmethod frames ((instance controller))
-  (send-frames-message (slot-value instance 'connection)))
+  (send-frames-message (get-connection instance)))
 
 (defmethod notify-connection-closed ((instance controller)))
 
 (defmethod notify-connection-established ((instance controller)))
   
 (defmethod run ((instance controller))
-  (start-message-loop (slot-value instance 'connection)))
+  (start-message-loop (get-connection instance)))
 
+(defmethod connect ((instance controller) &key host port &allow-other-keys)
+  (let ((connection (make-instance 'connection :port port :host host)))
+    (setf (slot-value instance 'connection) connection)
+    (setf (slot-value connection 'controller) instance)))
   
