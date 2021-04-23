@@ -34,13 +34,23 @@
       (close-connection instance)
       (frames instance)))
 
-(defmethod render-frame ((instance controller) sample-buffer)
-  (incf (slot-value instance 'cur-frame-count))
-  (let ((sample (sin (funcall (slot-value instance 'phase-generator) 440.0))))
-    (dotimes (i (get-channel-count instance))
-      (setf (aref sample-buffer i) sample)))
-  t)
-  
+(defmethod render-frames ((instance example-controller) frame-count sample-buffer)
+  (let ((rendered-frame-count 0)
+	(channel-count (get-channel-count instance))
+	(phase-generator (slot-value instance 'phase-generator)))
+    (dotimes (frame-number frame-count)
+      (if (done-p instance)
+	  (return)
+	  (progn
+	    (incf rendered-frame-count)
+	    (incf (slot-value instance 'cur-frame-count))
+	    (let ((sample (sin (funcall phase-generator 440.0))))
+	      (dotimes (i channel-count)
+		(setf (aref sample-buffer (+ i (* frame-number channel-count)))
+		      sample))))))
+  rendered-frame-count))
+
+
 (defun main ()
   (let ((my-controller
 	  (make-instance

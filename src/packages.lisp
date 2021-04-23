@@ -6,7 +6,7 @@
    :run
    :stop
    :start
-   :render-frame
+   :render-frames
    :close-connection
    :frames
    :get-sample-rate

@@ -28,11 +28,12 @@
    "Is called when controller is supposed to send audio data to the server. Must be implemented
     by a controller."))
 
-(defgeneric render-frame (controller sample-buffer)
+(defgeneric render-frames (controller frame-count sample-buffer)
   (:documentation
-   "Render a frame. Must be implemented by a controller.
-    sample-buffer: Transfer object for the rendered samples. An array of length channel count.
-    Return value: t on success."))
+   "Render frames. Must be implemented by a controller.
+    sample-buffer: Transfer object for the rendered samples. 
+    An array of length (frame-count * channel-count).
+    Returns number of rendered frames."))
 
 (defgeneric notify-connection-closed (controller)
   (:documentation

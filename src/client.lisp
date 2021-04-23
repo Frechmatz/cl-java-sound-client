@@ -52,18 +52,23 @@
      (slot-value instance 'stream))))
 
 (defmethod send-frames-message ((instance connection))
-  ;; Deadlock if controller tries to send a message
-  ;; in render-frame method
+  ;; TODO Actual implementation is hard coded to request one
+  ;; frame per render-frames request.
   (bt:with-lock-held ((slot-value instance 'send-message-lock))
     (let* ((frames-builder (make-frames-builder))
 	   (controller (get-controller instance))
 	   (channel-count (get-channel-count controller))
 	   (sample-buffer (make-array channel-count)))
       (dotimes (i (slot-value instance 'requested-frame-count))
-	(if (not (render-frame controller sample-buffer))
+	(let ((rendered-frame-count
+		(render-frames
+		 controller
+		 1
+		 sample-buffer)))
+	  (if (= 0 rendered-frame-count)
 	    (return)
 	    (dotimes (i channel-count)
-	      (write-sample frames-builder (elt sample-buffer i)))))
+	      (write-sample frames-builder (elt sample-buffer i))))))
       (cl-java-sound-client-message:write-frames-message
        (slot-value instance 'stream)
        :sample-data (get-samples frames-builder)))))
