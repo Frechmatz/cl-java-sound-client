@@ -249,25 +249,36 @@
 (defun builder-write-sample (frames-builder sample)
   (funcall (first frames-builder) sample))
 
-;; TODO Current implementation is hard coded to request one
-;; frame per render-frames request.
+(defparameter *frame-chunk-size* 10000)
+
 (defun write-frames-message (stream &key sample-width channel-count frame-count frames-renderer)
   (declare (ignore sample-width))
   (write-marker stream *START-OF-MESSAGE-MARKER*)
   (write-message-type stream +MESSAGE-TYPE-FRAMES+)
-  (let ((frames-builder (make-frames-builder))
-	 (sample-buffer (make-array channel-count)))
-    (dotimes (i frame-count)
-      (let ((rendered-frame-count
-	      (funcall frames-renderer 1 sample-buffer)))
-	(if (= 0 rendered-frame-count)
-	    (return)
-	    (dotimes (i channel-count)
-	      (builder-write-sample frames-builder (elt sample-buffer i))))))
-    (let ((sample-data (builder-get-samples frames-builder)))
-      (write-sample-data-length stream (length sample-data))
-      (write-sequence sample-data stream)
-      (write-marker stream *END-OF-MESSAGE-MARKER*)
-      (force-output stream)
-      (format t "~%Outbound: FramesMessageV2{sample-data-length=~a}" (length sample-data)))))
+  (let ((stop-rendering nil)
+	(frames-builder (make-frames-builder))
+	(sample-buffer (make-array (* *frame-chunk-size* channel-count))))
+    (flet ((render-frames (frame-count)
+	   (let ((rendered-frame-count
+		   (funcall frames-renderer frame-count sample-buffer)))
+	     (dotimes (i (* rendered-frame-count channel-count))
+	       (builder-write-sample frames-builder (elt sample-buffer i)))
+	     (if (= 0 rendered-frame-count)
+		 (setf stop-rendering t)))))
+      (multiple-value-bind (chunk-count remaining-frame-count)
+	  (truncate frame-count *frame-chunk-size*)
+	;;(format t "~%chunk-count=~a remaining-frame-count=~a" chunk-count remaining-frame-count)
+	(dotimes (i chunk-count)
+	  (render-frames *frame-chunk-size*)
+	  (if stop-rendering
+	      (return)))
+	(if (not stop-rendering)
+	    (render-frames remaining-frame-count))
+	(let ((sample-data (builder-get-samples frames-builder)))
+	  (write-sample-data-length stream (length sample-data))
+	  (write-sequence sample-data stream)
+	  (write-marker stream *END-OF-MESSAGE-MARKER*)
+	  (force-output stream)
+	  (format t "~%Outbound: FramesMessage{sample-data-length=~a}" (length sample-data)))))))
+
 
