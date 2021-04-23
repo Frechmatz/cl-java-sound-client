@@ -1,26 +1,7 @@
 (in-package :cl-java-sound-client)
 
 ;;
-;; Frames-Builder
-;;
-
-(defun make-frames-builder ()
-  (let ((os (flexi-streams:make-in-memory-output-stream
-	     :element-type '(unsigned-byte 8))))
-    (list
-     (lambda (sample)
-       (cl-java-sound-client-message:write-sample os sample))
-     (lambda()
-       (flexi-streams:get-output-stream-sequence os)))))
-
-(defun write-sample (frames-builder sample)
-  (funcall (first frames-builder) sample))
-
-(defun get-samples (frames-builder)
-  (funcall (second frames-builder)))
-
-;;
-;; Connection Implementation
+;; Connection
 ;;
 
 (defun expect-ack (stream)
@@ -52,26 +33,19 @@
      (slot-value instance 'stream))))
 
 (defmethod send-frames-message ((instance connection))
-  ;; TODO Actual implementation is hard coded to request one
-  ;; frame per render-frames request.
   (bt:with-lock-held ((slot-value instance 'send-message-lock))
-    (let* ((frames-builder (make-frames-builder))
-	   (controller (get-controller instance))
-	   (channel-count (get-channel-count controller))
-	   (sample-buffer (make-array channel-count)))
-      (dotimes (i (slot-value instance 'requested-frame-count))
-	(let ((rendered-frame-count
-		(render-frames
-		 controller
-		 1
-		 sample-buffer)))
-	  (if (= 0 rendered-frame-count)
-	    (return)
-	    (dotimes (i channel-count)
-	      (write-sample frames-builder (elt sample-buffer i))))))
+    (let ((controller (get-controller instance)))
       (cl-java-sound-client-message:write-frames-message
        (slot-value instance 'stream)
-       :sample-data (get-samples frames-builder)))))
+       :sample-width (get-sample-width controller)
+       :channel-count (get-channel-count controller)
+       :frame-count (slot-value instance 'requested-frame-count)
+       :frames-renderer
+       (lambda (frame-count sample-buffer)
+	 (render-frames
+	  controller
+	  frame-count
+	  sample-buffer))))))
 
 (defmethod send-init-message ((instance connection) &key sample-rate channel-count buffer-size)
   (bt:with-lock-held ((slot-value instance 'send-message-lock))
@@ -136,7 +110,7 @@
 	    :format-arguments (list message)))))
 
 ;;
-;; Controller Implementation
+;; Controller
 ;;
 
 (defmethod start ((instance controller))

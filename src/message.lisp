@@ -223,18 +223,51 @@
   (force-output stream)
   (format t "~%Outbound: StopMessage{}"))
 
-(defun write-frames-message (stream &key sample-data)
-  (write-marker stream *START-OF-MESSAGE-MARKER*)
-  (write-message-type stream +MESSAGE-TYPE-FRAMES+)
-  (write-sample-data-length stream (length sample-data))
-  (write-sequence sample-data stream)
-  (write-marker stream *END-OF-MESSAGE-MARKER*)
-  (force-output stream)
-  (format t "~%Outbound: FramesMessage{sample-data-length=~a}" (length sample-data)))
-
 (defun write-close-message (stream)
   (write-marker stream *START-OF-MESSAGE-MARKER*)
   (write-message-type stream +MESSAGE-TYPE-CLOSE+)
   (write-marker stream *END-OF-MESSAGE-MARKER*)
   (force-output stream)
   (format t "~%Outbound: CloseMessage{}"))
+
+;;
+;; Frames-Builder
+;;
+
+(defun make-frames-builder ()
+  (let ((os (flexi-streams:make-in-memory-output-stream
+	     :element-type '(unsigned-byte 8))))
+    (list
+     (lambda (sample)
+       (write-sample os sample))
+     (lambda()
+       (flexi-streams:get-output-stream-sequence os)))))
+
+(defun builder-get-samples (frames-builder)
+  (funcall (second frames-builder)))
+
+(defun builder-write-sample (frames-builder sample)
+  (funcall (first frames-builder) sample))
+
+;; TODO Current implementation is hard coded to request one
+;; frame per render-frames request.
+(defun write-frames-message (stream &key sample-width channel-count frame-count frames-renderer)
+  (declare (ignore sample-width))
+  (write-marker stream *START-OF-MESSAGE-MARKER*)
+  (write-message-type stream +MESSAGE-TYPE-FRAMES+)
+  (let ((frames-builder (make-frames-builder))
+	 (sample-buffer (make-array channel-count)))
+    (dotimes (i frame-count)
+      (let ((rendered-frame-count
+	      (funcall frames-renderer 1 sample-buffer)))
+	(if (= 0 rendered-frame-count)
+	    (return)
+	    (dotimes (i channel-count)
+	      (builder-write-sample frames-builder (elt sample-buffer i))))))
+    (let ((sample-data (builder-get-samples frames-builder)))
+      (write-sample-data-length stream (length sample-data))
+      (write-sequence sample-data stream)
+      (write-marker stream *END-OF-MESSAGE-MARKER*)
+      (force-output stream)
+      (format t "~%Outbound: FramesMessageV2{sample-data-length=~a}" (length sample-data)))))
+
