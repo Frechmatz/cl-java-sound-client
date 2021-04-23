@@ -1,4 +1,4 @@
-(in-package :cl-java-sound-client-message)
+(in-package :cl-java-sound-client-message-serialization)
 
 (defconstant +MESSAGE-TYPE-ACK+ 1)
 (defconstant +MESSAGE-TYPE-NAK+ 2)

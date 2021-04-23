@@ -5,8 +5,8 @@
 ;;
 
 (defun expect-ack (stream)
-  (let ((message (cl-java-sound-client-message:read-message stream)))
-    (if (not (cl-java-sound-client-message:ack-message-p message))
+  (let ((message (cl-java-sound-client-message-serialization:read-message stream)))
+    (if (not (cl-java-sound-client-message-serialization:ack-message-p message))
 	(error 'simple-error
 	       :format-control "Expected AckMessage but got ~a"
 	       :format-arguments (list message)))))
@@ -24,18 +24,18 @@
 
 (defmethod send-start-message ((instance connection))
   (bt:with-lock-held ((slot-value instance 'send-message-lock))
-    (cl-java-sound-client-message:write-start-message
+    (cl-java-sound-client-message-serialization:write-start-message
      (slot-value instance 'stream))))
 
 (defmethod send-stop-message ((instance connection))
   (bt:with-lock-held ((slot-value instance 'send-message-lock))
-    (cl-java-sound-client-message:write-stop-message
+    (cl-java-sound-client-message-serialization:write-stop-message
      (slot-value instance 'stream))))
 
 (defmethod send-frames-message ((instance connection))
   (bt:with-lock-held ((slot-value instance 'send-message-lock))
     (let ((controller (get-controller instance)))
-      (cl-java-sound-client-message:write-frames-message
+      (cl-java-sound-client-message-serialization:write-frames-message
        (slot-value instance 'stream)
        :sample-width (get-sample-width controller)
        :channel-count (get-channel-count controller)
@@ -49,7 +49,7 @@
 
 (defmethod send-init-message ((instance connection) &key sample-rate channel-count buffer-size)
   (bt:with-lock-held ((slot-value instance 'send-message-lock))
-    (cl-java-sound-client-message:write-init-message
+    (cl-java-sound-client-message-serialization:write-init-message
      (slot-value instance 'stream)
      :sample-rate sample-rate
      :channel-count channel-count
@@ -57,7 +57,7 @@
   
 (defmethod send-close-message ((instance connection))
   (bt:with-lock-held ((slot-value instance 'send-message-lock))
-    (cl-java-sound-client-message:write-close-message
+    (cl-java-sound-client-message-serialization:write-close-message
      (slot-value instance 'stream))))
 
 (defmethod send-init-session-data ((instance connection))
@@ -85,7 +85,7 @@
 	  (loop
 	    (handle-message
 	     instance
-	     (cl-java-sound-client-message:read-message stream))))
+	     (cl-java-sound-client-message-serialization:read-message stream))))
       (end-of-file (c)
 	(declare (ignore c))
 	(format t "~%Connection closed"))
@@ -100,7 +100,7 @@
 
 (defmethod handle-message ((instance connection) message)
   (cond
-    ((cl-java-sound-client-message:get-frames-message-p message)
+    ((cl-java-sound-client-message-serialization:get-frames-message-p message)
      (setf (slot-value instance 'requested-frame-count)
 	   (getf message :frame-count))
      (notify-frames-requested (slot-value instance 'controller)))

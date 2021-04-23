@@ -7,7 +7,7 @@
 		:components ((:file "packages")
 			     (:file "controller")
 			     (:file "connection")
-			     (:file "message")
+			     (:file "serialization")
 			     (:file "client")))))
 
 (defsystem :cl-java-sound-client/examples

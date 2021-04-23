@@ -16,7 +16,7 @@
    :notify-connection-closed
    :notify-connection-established))
 
-(defpackage :cl-java-sound-client-message
+(defpackage :cl-java-sound-client-message-serialization
   (:use :cl)
   (:export
    :read-message
