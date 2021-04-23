@@ -1,29 +1,36 @@
 ;;
-;; Example
-;; Play a 2-Channel 16Bit 44100Hz Sine wave
+;; Example: Play Sine Wave
 ;;
 
 (in-package :cl-java-sound-client-example-1)
 
+(defun make-phase-generator (sample-rate)
+  (let ((phi 0.0))
+    (lambda (frequency)
+      (declare (type single-float frequency))
+      (setf phi (rem (+ phi (/ (* 2 PI frequency) sample-rate)) (* 2 PI)))
+      phi)))
+
 (defclass example-controller (controller)
   ((cur-frame-count :initform 0)
-   (duration-seconds :initarg :duration-seconds)
+   (max-frame-count :initform 0)
    (phase-generator :initform nil)))
 
-(defmethod initialize-instance :after ((instance example-controller) &rest rest)
-  (declare (ignore rest))
-  (flet ((make-phase-generator ()
-	   (let ((phi 0.0) (sample-rate (get-sample-rate instance)))
-	     (lambda (frequency)
-	       (declare (type single-float frequency))
-	       (setf phi (rem (+ phi (/ (* 2 PI frequency) sample-rate)) (* 2 PI)))
-	       phi))))
-    (setf (slot-value instance 'phase-generator) (make-phase-generator))))
+(defun done-p (controller)
+  (<= (slot-value controller 'max-frame-count)
+      (slot-value controller 'cur-frame-count)))
+
+(defmethod initialize-instance :after
+    ((instance example-controller)
+     &key duration-seconds
+     &allow-other-keys)
+  (setf (slot-value instance 'phase-generator)
+	(make-phase-generator (get-sample-rate instance)))
+  (setf (slot-value instance 'max-frame-count)
+	(* (get-sample-rate instance) duration-seconds)))
   
 (defmethod notify-frames-requested ((instance example-controller))
-  (if (<= (* (slot-value instance 'duration-seconds)
-	     (get-sample-rate instance))
-	  (slot-value instance 'cur-frame-count))
+  (if (done-p instance)
       (close-connection instance)
       (frames instance)))
 
