@@ -1,0 +1,22 @@
+(in-package :cl-java-sound-client)
+
+(defclass connection ()
+  ((port :initarg :port :initform 9000)
+   (host :initarg :host :initform "localhost")
+   (controller :initform nil)
+   (socket :initform nil)
+   (stream :initform nil)
+   (send-message-lock :initform (bt:make-lock))
+   (requested-frame-count :initform 0)))
+
+(defgeneric start-message-loop (connection))
+(defgeneric handle-message (connection message))
+(defgeneric send-start-message (connection))
+(defgeneric send-stop-message (connection))
+(defgeneric send-frames-message (connection))
+(defgeneric send-init-message (connection &key sample-rate channel-count buffer-size))
+(defgeneric close-connection (connection))
+(defgeneric send-init-session-data (connection))
+(defun get-controller (connection)
+  (slot-value connection 'controller))
+

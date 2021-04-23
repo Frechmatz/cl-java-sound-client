@@ -5,6 +5,8 @@
   :components ((:module "src"
 		:serial t
 		:components ((:file "packages")
+			     (:file "controller")
+			     (:file "connection")
 			     (:file "message")
 			     (:file "client")))))
 
