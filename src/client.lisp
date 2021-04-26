@@ -19,7 +19,7 @@
 	 (slot-value instance 'port)
 	 :element-type '(unsigned-byte 8)))
   (setf (slot-value instance 'stream)
-	(usocket:socket-stream (slot-value instance 'socket)))  
+	(usocket:socket-stream (slot-value instance 'socket)))
   (send-init-session-data instance))
 
 (defmethod send-start-message ((instance connection))
@@ -40,6 +40,8 @@
        :sample-width (get-sample-width controller)
        :channel-count (get-channel-count controller)
        :frame-count (slot-value instance 'requested-frame-count)
+       :frame-chunk-size (write-frames-chunk-length instance)
+       :sample-buffer (write-frames-sample-buffer instance)
        :frames-renderer
        (lambda (frame-count sample-buffer)
 	 (render-frames
@@ -109,6 +111,14 @@
 	    :format-control "Dont know how to handle message: ~a"
 	    :format-arguments (list message)))))
 
+(defmethod set-controller ((instance connection) controller)
+  (setf (slot-value instance 'controller) controller)
+  (setf (slot-value instance 'write-frames-sample-buffer)
+	;; buffer used for frame rendering
+	(make-array (*
+		     (write-frames-chunk-length instance)
+		     (get-channel-count controller)))))
+
 ;;
 ;; Controller
 ;;
@@ -135,5 +145,4 @@
 (defmethod connect ((instance controller) &key host port &allow-other-keys)
   (let ((connection (make-instance 'connection :port port :host host)))
     (setf (slot-value instance 'connection) connection)
-    (setf (slot-value connection 'controller) instance)))
-  
+    (set-controller connection instance)))

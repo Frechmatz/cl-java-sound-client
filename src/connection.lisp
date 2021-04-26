@@ -7,7 +7,9 @@
    (socket :initform nil)
    (stream :initform nil)
    (send-message-lock :initform (bt:make-lock))
-   (requested-frame-count :initform 0)))
+   (requested-frame-count :initform 0)
+   (write-frames-chunk-length :initform 10000)
+   (write-frames-sample-buffer :initform nil)))
 
 (defgeneric start-message-loop (connection))
 (defgeneric handle-message (connection message))
@@ -17,6 +19,12 @@
 (defgeneric send-init-message (connection &key sample-rate channel-count buffer-size))
 (defgeneric close-connection (connection))
 (defgeneric send-init-session-data (connection))
+(defgeneric set-controller (connection controller))
 (defun get-controller (connection)
   (slot-value connection 'controller))
+(defun write-frames-chunk-length (connection)
+  (slot-value connection 'write-frames-chunk-length))
+(defun write-frames-sample-buffer (connection)
+  (slot-value connection 'write-frames-sample-buffer))
+
 
