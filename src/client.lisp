@@ -83,9 +83,8 @@
       (setf (slot-value instance 'buffer-size-frames)
 	    (getf message :buffer-size-frames))
       (setf (slot-value instance 'sample-buffer)
-	    (make-array (*
-			 (get-buffer-size-frames instance)
-			 (get-channel-count controller)))))))
+	    (make-array (* (get-buffer-size-frames instance)
+			   (get-channel-count controller)))))))
   
 (defmethod start-message-loop ((instance connection))
   (let ((stream (slot-value instance 'stream))
@@ -120,9 +119,6 @@
 	    :format-control "Dont know how to handle message: ~a"
 	    :format-arguments (list message)))))
 
-(defmethod set-controller ((instance connection) controller)
-  (setf (slot-value instance 'controller) controller))
-
 ;;
 ;; Controller
 ;;
@@ -154,4 +150,4 @@
 	   :host host
 	   :buffer-size-frames buffer-size-frames)))
     (setf (slot-value instance 'connection) connection)
-    (set-controller connection instance)))
+    (setf (slot-value connection 'controller) instance)))
