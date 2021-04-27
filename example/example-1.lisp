@@ -35,9 +35,6 @@
       (frames instance)))
 
 (defmethod render-frames ((instance example-controller) frame-count sample-buffer)
-  ;; DO NOT COMMIT
-  (if (< 1 frame-count)
-      (format t "~%render-frames frame-count=~a" frame-count))
   (let ((rendered-frame-count 0)
 	(channel-count (get-channel-count instance))
 	(phase-generator (slot-value instance 'phase-generator)))
@@ -55,14 +52,15 @@
 
 
 (defun main ()
-  (let ((my-controller
-	  (make-instance
-	   'example-controller
-	   :duration-seconds 5
-	   :sample-rate 44100
-	   :sample-width 2
-	   :channel-count 2)))
-    (connect my-controller :port 9000 :host "localhost")
-    (run my-controller)))
+  (time
+   (let ((my-controller
+	   (make-instance
+	    'example-controller
+	    :duration-seconds 5
+	    :sample-rate 44100
+	    :sample-width 2
+	    :channel-count 2)))
+     (connect my-controller :port 9000 :host "localhost")
+     (run my-controller))))
 
 ;;(main)
