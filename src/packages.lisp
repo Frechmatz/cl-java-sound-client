@@ -31,6 +31,7 @@
    :frames-message-p
    :get-frames-message-p
    :init-message-p
+   :ackinit-message-p
    :stop-message-p
    :start-message-p
    :close-message-p)

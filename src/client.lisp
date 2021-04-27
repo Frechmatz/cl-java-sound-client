@@ -4,13 +4,6 @@
 ;; Connection
 ;;
 
-(defun expect-ack (stream)
-  (let ((message (cl-java-sound-client-message:read-message stream)))
-    (if (not (cl-java-sound-client-message:ack-message-p message))
-	(error 'simple-error
-	       :format-control "Expected AckMessage but got ~a"
-	       :format-arguments (list message)))))
-
 (defmethod initialize-instance :after ((instance connection) &rest args)
   (declare (ignore args))
   (setf (slot-value instance 'socket)
@@ -39,9 +32,8 @@
        (slot-value instance 'stream)
        :sample-width (get-sample-width controller)
        :channel-count (get-channel-count controller)
-       :frame-count (slot-value instance 'requested-frame-count)
-       :frame-chunk-size (write-frames-chunk-length instance)
-       :sample-buffer (write-frames-sample-buffer instance)
+       :frame-count (get-buffer-size-frames instance)
+       :sample-buffer (get-sample-buffer instance)
        :frames-renderer
        (lambda (frame-count sample-buffer)
 	 (render-frames
@@ -49,13 +41,17 @@
 	  frame-count
 	  sample-buffer))))))
 
-(defmethod send-init-message ((instance connection) &key sample-rate channel-count buffer-size)
+(defmethod send-init-message ((instance connection)
+			      &key
+				sample-rate
+				channel-count
+				buffer-size-frames)
   (bt:with-lock-held ((slot-value instance 'send-message-lock))
     (cl-java-sound-client-message:write-init-message
      (slot-value instance 'stream)
      :sample-rate sample-rate
      :channel-count channel-count
-     :buffer-size buffer-size)))
+     :buffer-size-frames buffer-size-frames)))
   
 (defmethod send-close-message ((instance connection))
   (bt:with-lock-held ((slot-value instance 'send-message-lock))
@@ -71,17 +67,32 @@
 	(write-sequence data stream)
 	(force-output stream)))))
 
+(defmethod init-audio ((instance connection) controller)
+  (let ((stream (slot-value instance 'stream)))
+    (send-init-message
+     instance
+     :sample-rate (get-sample-rate controller)
+     :channel-count (get-channel-count controller)
+     :buffer-size-frames (get-buffer-size-frames instance))
+    (let ((message (cl-java-sound-client-message:read-message stream)))
+      (if (not (cl-java-sound-client-message:ackinit-message-p message))
+	  (error 'simple-error
+		 :format-control "Expected AckInitMessage but got ~a"
+		 :format-arguments (list message)))
+      ;; Server returns new buffer size frames
+      (setf (slot-value instance 'buffer-size-frames)
+	    (getf message :buffer-size-frames))
+      (setf (slot-value instance 'sample-buffer)
+	    (make-array (*
+			 (get-buffer-size-frames instance)
+			 (get-channel-count controller)))))))
+  
 (defmethod start-message-loop ((instance connection))
   (let ((stream (slot-value instance 'stream))
 	(controller (slot-value instance 'controller)))
     (handler-case
 	(progn
-	  (send-init-message
-	   instance
-	   :sample-rate (get-sample-rate controller)
-	   :channel-count (get-channel-count controller)
-	   :buffer-size (get-buffer-size controller))
-	  (expect-ack stream)
+	  (init-audio instance controller)
 	  (notify-connection-established controller)
 	  (send-start-message instance)
 	  (loop
@@ -103,8 +114,6 @@
 (defmethod handle-message ((instance connection) message)
   (cond
     ((cl-java-sound-client-message:get-frames-message-p message)
-     (setf (slot-value instance 'requested-frame-count)
-	   (getf message :frame-count))
      (notify-frames-requested (slot-value instance 'controller)))
     (t
      (error 'simple-error
@@ -112,12 +121,7 @@
 	    :format-arguments (list message)))))
 
 (defmethod set-controller ((instance connection) controller)
-  (setf (slot-value instance 'controller) controller)
-  (setf (slot-value instance 'write-frames-sample-buffer)
-	;; buffer used for frame rendering
-	(make-array (*
-		     (write-frames-chunk-length instance)
-		     (get-channel-count controller)))))
+  (setf (slot-value instance 'controller) controller))
 
 ;;
 ;; Controller
@@ -142,7 +146,12 @@
 (defmethod run ((instance controller))
   (start-message-loop (get-connection instance)))
 
-(defmethod connect ((instance controller) &key host port &allow-other-keys)
-  (let ((connection (make-instance 'connection :port port :host host)))
+(defmethod connect ((instance controller) &key host port buffer-size-frames &allow-other-keys)
+  (let ((connection
+	  (make-instance
+	   'connection
+	   :port port
+	   :host host
+	   :buffer-size-frames buffer-size-frames)))
     (setf (slot-value instance 'connection) connection)
     (set-controller connection instance)))

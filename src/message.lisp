@@ -8,6 +8,7 @@
 (defconstant +MESSAGE-TYPE-STOP+ 6)
 (defconstant +MESSAGE-TYPE-START+ 7)
 (defconstant +MESSAGE-TYPE-CLOSE+ 8)
+(defconstant +MESSAGE-TYPE-ACKINIT+ 9)
 
 ;;
 ;;
@@ -37,6 +38,9 @@
 (defun close-message-type-p (message-type)
   (= message-type +MESSAGE-TYPE-CLOSE+))
 
+(defun ackinit-message-type-p (message-type)
+  (= message-type +MESSAGE-TYPE-ACKINIT+))
+
 ;;
 ;;
 ;;
@@ -64,6 +68,9 @@
 
 (defun close-message-p (message-type)
   (close-message-type-p (getf message-type :message-type)))
+
+(defun ackinit-message-p (message-type)
+  (ackinit-message-type-p (getf message-type :message-type)))
 
 ;;
 ;;
@@ -100,7 +107,7 @@
   ;; signed short 2 bytes DataInputStream readShort
   (lisp-binary:write-integer channel-count 2 stream :byte-order :big-endian :signed t))
 
-(defun read-frame-count (stream)
+(defun read-buffer-size-frames (stream)
   ;; signed int 4 bytes DataInputStream readInt
   (lisp-binary:read-integer 4 stream :byte-order :big-endian :signed t))
 
@@ -120,7 +127,7 @@
   ;; signed short 2 bytes DataInputStream readShort
   (lisp-binary:read-integer 2 stream :byte-order :big-endian :signed t))
 
-(defun write-buffer-size (stream buffer-size)
+(defun write-buffer-size-frames (stream buffer-size)
   ;; signed int 4 bytes DataInputStream readInt
   (lisp-binary:write-integer buffer-size 4 stream :byte-order :big-endian :signed t))
 
@@ -128,16 +135,17 @@
 ;; Start/End-Of-Message Marker
 ;;
 
-(defparameter *START-OF-MESSAGE-MARKER* (make-array
-				      4
-				      :element-type '(unsigned-byte 8)
-				      :initial-contents '(1 2 3 4)))
+(defparameter *START-OF-MESSAGE-MARKER*
+  (make-array
+   4
+   :element-type '(unsigned-byte 8)
+   :initial-contents '(1 2 3 4)))
 
-(defparameter *END-OF-MESSAGE-MARKER* (make-array
-				      4
-				      :element-type '(unsigned-byte 8)
-				      :initial-contents '(4 3 2 1)))
-
+(defparameter *END-OF-MESSAGE-MARKER*
+  (make-array
+   4
+   :element-type '(unsigned-byte 8)
+   :initial-contents '(4 3 2 1)))
 
 (defun write-marker (stream arr)
   (dotimes (i (length arr))
@@ -164,12 +172,15 @@
 	       (list :message-type message-type))
 	      ((get-frames-message-type-p message-type)
 	       (list
-		:message-type message-type
-		:frame-count (read-frame-count stream)))
+		:message-type message-type))
 	      ((frames-message-type-p message-type)
 	       (error 'simple-error 
 		      :format-control "Frames message not supported ~a"
 		      :format-arguments (list message-type)))
+	      ((ackinit-message-type-p message-type)
+	       (list
+		:message-type message-type
+		:buffer-size-frames (read-buffer-size-frames stream)))
 	      ((init-message-type-p message-type)
 	       (error 'simple-error
 		      :format-control "Frames message not supported ~a"
@@ -198,16 +209,16 @@
 ;;
 ;;
 
-(defun write-init-message (stream &key sample-rate channel-count buffer-size)
+(defun write-init-message (stream &key sample-rate channel-count buffer-size-frames)
   (write-marker stream *START-OF-MESSAGE-MARKER*)
   (write-message-type stream +MESSAGE-TYPE-INIT+)
   (write-sample-rate stream sample-rate)
   (write-channel-count stream channel-count)
-  (write-buffer-size stream buffer-size)
+  (write-buffer-size-frames stream buffer-size-frames)
   (write-marker stream *END-OF-MESSAGE-MARKER*)
   (force-output stream)
-  (format t "~%Outbound: InitMessage{sample-rate=~a, channel-count=~a, buffer-size=~a}"
-	  sample-rate channel-count buffer-size))
+  (format t "~%Outbound: InitMessage{sample-rate=~a, channel-count=~a, buffer-size-frames=~a}"
+	  sample-rate channel-count buffer-size-frames))
 
 (defun write-start-message (stream)
   (write-marker stream *START-OF-MESSAGE-MARKER*)
@@ -254,7 +265,6 @@
 			       sample-width
 			       channel-count
 			       frame-count
-			       frame-chunk-size
 			       sample-buffer
 			       frames-renderer)
   (declare (ignore sample-width))
@@ -269,20 +279,12 @@
 	       (builder-write-sample frames-builder (elt sample-buffer i)))
 	     (if (= 0 rendered-frame-count)
 		 (setf stop-rendering t)))))
-      (multiple-value-bind (chunk-count remaining-frame-count)
-	  (truncate frame-count frame-chunk-size)
-	;;(format t "~%chunk-count=~a remaining-frame-count=~a" chunk-count remaining-frame-count)
-	(dotimes (i chunk-count)
-	  (render-frames frame-chunk-size)
-	  (if stop-rendering
-	      (return)))
-	(if (not stop-rendering)
-	    (render-frames remaining-frame-count))
+      (render-frames frame-count))
 	(let ((sample-data (builder-get-samples frames-builder)))
 	  (write-sample-data-length stream (length sample-data))
 	  (write-sequence sample-data stream)
 	  (write-marker stream *END-OF-MESSAGE-MARKER*)
 	  (force-output stream)
-	  (format t "~%Outbound: FramesMessage{sample-data-length=~a}" (length sample-data)))))))
+	  (format t "~%Outbound: FramesMessage{sample-data-length=~a}" (length sample-data)))))
 
 

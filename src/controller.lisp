@@ -4,7 +4,6 @@
   ((connection :initform nil)
    (channel-count :initarg :channel-count)
    (sample-width :initarg :sample-width :initform 2)
-   (buffer-size ::initarg :buffer-size :initform 0)
    (sample-rate :initarg :sample-rate :initform 44100)))
 
 (defgeneric stop (controller)
@@ -44,7 +43,7 @@
    "Is called when the connection to the server has been established
     and the server is ready to receive audio data."))
 
-(defgeneric connect (controller &key host port &allow-other-keys)
+(defgeneric connect (controller &key host port buffer-size-frames &allow-other-keys)
   (:documentation
    "Connect with server"))
 
@@ -57,9 +56,6 @@
 
 (defun get-sample-width (controller)
   (slot-value controller 'sample-width))
-
-(defun get-buffer-size (controller)
-  (slot-value controller 'buffer-size))
 
 (defun get-sample-rate (controller)
   (slot-value controller 'sample-rate))
