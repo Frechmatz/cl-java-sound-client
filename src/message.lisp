@@ -96,12 +96,18 @@
     (t
      value)))
 
+(defun write-16bit-signed-big-endian (stream sint)
+  (when (< sint 0) (incf sint (expt 2 (* 2 8))))
+  (write-byte (ldb (byte 8 8) sint) stream)
+  (write-byte (ldb (byte 8 0) sint) stream))
+
 ;; 16bit signed
 (defun write-sample (stream sample)
   "Sample: -1.0...1.0"
-  ;;  (declare (type single-float sample))
   (let ((s16 (value-to-16bit-signed sample)))
-    (lisp-binary:write-integer s16 2 stream :byte-order :big-endian)))
+    ;; Using lisp-binary here causes too much consing
+    ;;(lisp-binary:write-integer s16 2 stream :byte-order :big-endian)
+    (write-16bit-signed-big-endian stream s16)))
 
 (defun write-channel-count (stream channel-count)
   ;; signed short 2 bytes DataInputStream readShort
