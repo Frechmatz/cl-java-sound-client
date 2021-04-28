@@ -28,18 +28,17 @@
 (defmethod send-frames-message ((instance connection))
   (bt:with-lock-held ((slot-value instance 'send-message-lock))
     (let ((controller (get-controller instance)))
-      (cl-java-sound-client-message:write-frames-message
-       (slot-value instance 'stream)
-       :sample-width (get-sample-width controller)
-       :channel-count (get-channel-count controller)
-       :frame-count (get-buffer-size-frames instance)
-       :sample-buffer (get-sample-buffer instance)
-       :frames-renderer
-       (lambda (frame-count sample-buffer)
+      (let ((rendered-frame-count
 	 (render-frames
 	  controller
-	  frame-count
-	  sample-buffer))))))
+	  (get-buffer-size-frames instance)
+	  (get-sample-buffer instance))))
+	(cl-java-sound-client-message:write-frames-message
+	 (slot-value instance 'stream)
+	 :samples (get-sample-buffer instance)
+	 :sample-width (get-sample-width controller)
+	 :sample-count (* (get-channel-count controller)
+			  rendered-frame-count))))))
 
 (defmethod send-init-message ((instance connection)
 			      &key

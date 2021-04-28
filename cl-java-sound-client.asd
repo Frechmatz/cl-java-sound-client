@@ -1,7 +1,7 @@
 (defsystem :cl-java-sound-client
   :serial t
   :version "0.0.1"
-  :depends-on (:usocket :lisp-binary :flexi-streams :bordeaux-threads)
+  :depends-on (:usocket :lisp-binary :bordeaux-threads)
   :components ((:module "src"
 		:serial t
 		:components ((:file "packages")
