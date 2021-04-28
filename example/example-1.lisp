@@ -4,12 +4,14 @@
 
 (in-package :cl-java-sound-client-example-1)
 
+(defconstant 2PI (coerce (* 2 PI) 'single-float))
+
 (defun make-phase-generator (sample-rate)
-  (let ((phi 0.0))
-    (lambda (frequency)
-      (declare (type single-float frequency))
-      (setf phi (rem (+ phi (/ (* 2 PI frequency) sample-rate)) (* 2 PI)))
-      phi)))
+    (let ((phi 0.0))
+      (lambda (frequency)
+	(declare (type single-float frequency))
+	(setf phi (rem (+ phi (/ (* 2PI frequency) sample-rate)) (* 2PI)))
+	phi)))
 
 (defclass example-controller (controller)
   ((cur-frame-count :initform 0)
