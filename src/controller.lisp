@@ -31,7 +31,8 @@
   (:documentation
    "Render frames. Must be implemented by a controller.
     sample-buffer: Transfer object for the rendered samples. 
-    An array of length (frame-count * channel-count).
+    An array of length (frame-count * channel-count). 
+    A sample is represented by a float -1.0 >= sample <= +1.0
     Returns number of rendered frames."))
 
 (defgeneric notify-connection-closed (controller)
