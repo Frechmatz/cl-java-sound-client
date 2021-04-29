@@ -62,7 +62,11 @@
 	    :sample-rate 44100
 	    :sample-width 2
 	    :channel-count 2)))
-     (connect my-controller :port 9000 :host "localhost" :buffer-size-frames 10000)
+     (connect my-controller
+	      :port 9000
+	      :host "localhost"
+	      :buffer-size-frames 10000
+	      :omit-audio-output nil)
      (run my-controller))))
 
 ;;(main)

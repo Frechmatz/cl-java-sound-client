@@ -8,14 +8,20 @@
    (stream :initform nil)
    (send-message-lock :initform (bt:make-lock))
    (buffer-size-frames :initarg :buffer-size-frames :initform 10001)
-   (sample-buffer :initform nil)))
+   (sample-buffer :initform nil)
+   (omit-audio-output :initarg :omit-audio-output)))
 
 (defgeneric start-message-loop (connection))
 (defgeneric handle-message (connection message))
 (defgeneric send-start-message (connection))
 (defgeneric send-stop-message (connection))
 (defgeneric send-frames-message (connection))
-(defgeneric send-init-message (connection &key sample-rate channel-count buffer-size-frames))
+(defgeneric send-init-message (connection
+			       &key
+				 sample-rate
+				 channel-count
+				 buffer-size-frames
+				 omit-audio-output))
 (defgeneric close-connection (connection))
 (defgeneric send-init-session-data (connection))
 (defgeneric init-audio (connection controller))
@@ -25,6 +31,6 @@
   (slot-value connection 'sample-buffer))
 (defun get-buffer-size-frames (controller)
   (slot-value controller 'buffer-size-frames))
-
-
+(defun get-omit-audio-output (controller)
+  (slot-value controller 'omit-audio-output))
 

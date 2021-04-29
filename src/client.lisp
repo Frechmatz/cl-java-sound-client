@@ -44,13 +44,15 @@
 			      &key
 				sample-rate
 				channel-count
-				buffer-size-frames)
+				buffer-size-frames
+				omit-audio-output)
   (bt:with-lock-held ((slot-value instance 'send-message-lock))
     (cl-java-sound-client-message:write-init-message
      (slot-value instance 'stream)
      :sample-rate sample-rate
      :channel-count channel-count
-     :buffer-size-frames buffer-size-frames)))
+     :buffer-size-frames buffer-size-frames
+     :omit-audio-output omit-audio-output)))
   
 (defmethod send-close-message ((instance connection))
   (bt:with-lock-held ((slot-value instance 'send-message-lock))
@@ -72,7 +74,8 @@
      instance
      :sample-rate (get-sample-rate controller)
      :channel-count (get-channel-count controller)
-     :buffer-size-frames (get-buffer-size-frames instance))
+     :buffer-size-frames (get-buffer-size-frames instance)
+     :omit-audio-output (get-omit-audio-output instance))
     (let ((message (cl-java-sound-client-message:read-message stream)))
       (if (not (cl-java-sound-client-message:ackinit-message-p message))
 	  (error 'simple-error
@@ -141,12 +144,14 @@
 (defmethod run ((instance controller))
   (start-message-loop (get-connection instance)))
 
-(defmethod connect ((instance controller) &key host port buffer-size-frames &allow-other-keys)
+(defmethod connect ((instance controller) &key host port buffer-size-frames
+		    (omit-audio-output nil) &allow-other-keys)
   (let ((connection
 	  (make-instance
 	   'connection
 	   :port port
 	   :host host
-	   :buffer-size-frames buffer-size-frames)))
+	   :buffer-size-frames buffer-size-frames
+	   :omit-audio-output omit-audio-output)))
     (setf (slot-value instance 'connection) connection)
     (setf (slot-value connection 'controller) instance)))
