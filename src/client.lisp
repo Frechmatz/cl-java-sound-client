@@ -94,10 +94,11 @@
 	    (make-array (* (get-buffer-size-frames instance)
 			   (get-channel-count controller))))))
   (log-info
-   "Server has accepted audio settings sample-rate=~a sample-width=~a channel-count=~a"
+   "Server has accepted audio settings sample-rate=~a sample-width=~a channel-count=~a omit-audio-output=~a"
    (get-sample-rate controller)
    (get-sample-width controller)
-   (get-channel-count controller)))
+   (get-channel-count controller)
+   (get-omit-audio-output instance)))
   
 (defmethod start-message-loop ((instance connection))
   (let ((stream (slot-value instance 'stream))
