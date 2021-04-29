@@ -97,9 +97,14 @@
 	  (notify-connection-established controller)
 	  (send-start-message instance)
 	  (loop
-	    (handle-message
-	     instance
-	     (cl-java-sound-client-message:read-message stream))))
+	    (let ((message (cl-java-sound-client-message:read-message stream)))
+	      (cond
+		((cl-java-sound-client-message:get-frames-message-p message)
+		 (notify-frames-requested (slot-value instance 'controller)))
+		(t
+		 (error 'simple-error
+			:format-control "Dont know how to handle message: ~a"
+			:format-arguments (list message)))))))
       (end-of-file (c)
 	(declare (ignore c))
 	(format t "~%Connection closed"))
@@ -111,15 +116,6 @@
     (setf (slot-value instance 'stream) nil)
     (notify-connection-closed controller))
   nil)
-
-(defmethod handle-message ((instance connection) message)
-  (cond
-    ((cl-java-sound-client-message:get-frames-message-p message)
-     (notify-frames-requested (slot-value instance 'controller)))
-    (t
-     (error 'simple-error
-	    :format-control "Dont know how to handle message: ~a"
-	    :format-arguments (list message)))))
 
 ;;
 ;; Controller

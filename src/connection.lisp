@@ -12,7 +12,6 @@
    (omit-audio-output :initarg :omit-audio-output)))
 
 (defgeneric start-message-loop (connection))
-(defgeneric handle-message (connection message))
 (defgeneric send-start-message (connection))
 (defgeneric send-stop-message (connection))
 (defgeneric send-frames-message (connection))
