@@ -19,3 +19,13 @@
 		:serial t
 		:components ((:file "packages")
 			     (:file "example-1")))))
+
+(defsystem :cl-java-sound-client/profiling
+  :serial t
+  :version "0.0.1"
+  :depends-on (:cl-java-sound-client)
+  :components ((:module "profiling"
+		:serial t
+		:components ((:file "packages")
+			     (:file "sample-generator")
+			     (:file "throughput")))))

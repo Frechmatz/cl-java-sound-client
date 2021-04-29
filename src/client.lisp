@@ -13,7 +13,10 @@
 	 :element-type '(unsigned-byte 8)))
   (setf (slot-value instance 'stream)
 	(usocket:socket-stream (slot-value instance 'socket)))
-  (send-init-session-data instance))
+  (send-init-session-data instance)
+  (log-info "Connected with server \"~a\" port ~a"
+	    (slot-value instance 'host)
+	    (slot-value instance 'port)))
 
 (defmethod send-start-message ((instance connection))
   (bt:with-lock-held ((slot-value instance 'send-message-lock))
@@ -86,7 +89,11 @@
 	    (getf message :buffer-size-frames))
       (setf (slot-value instance 'sample-buffer)
 	    (make-array (* (get-buffer-size-frames instance)
-			   (get-channel-count controller)))))))
+			   (get-channel-count controller))))))
+  (log-info
+   "Server has accepted audio settings sample-rate=~a channel-count=~a"
+   (get-sample-rate controller)
+   (get-channel-count controller)))
   
 (defmethod start-message-loop ((instance connection))
   (let ((stream (slot-value instance 'stream))
@@ -107,10 +114,10 @@
 			:format-arguments (list message)))))))
       (end-of-file (c)
 	(declare (ignore c))
-	(format t "~%Connection closed"))
+	(log-info "Connection closed"))
       (condition (c)
 	(format t "~%Catched error: ~a" c)))
-    (format t "~%Closing socket")
+    (log-info "Closing socket")
     (usocket:socket-close (slot-value instance 'socket))
     (setf (slot-value instance 'socket) nil)
     (setf (slot-value instance 'stream) nil)

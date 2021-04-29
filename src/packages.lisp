@@ -1,13 +1,14 @@
 (defpackage :cl-java-sound-client-logger
   (:use :cl)
   (:export
-   :*log-level*
+   :set-log-level
    :log-info
+   :log-debug
    :log-trace
    :log-error))
 
 (defpackage :cl-java-sound-client
-  (:use :cl)
+  (:use :cl :cl-java-sound-client-logger)
   (:export
    :controller
    :connect

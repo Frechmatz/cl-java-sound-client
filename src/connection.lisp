@@ -21,7 +21,6 @@
 				 channel-count
 				 buffer-size-frames
 				 omit-audio-output))
-(defgeneric close-connection (connection))
 (defgeneric send-init-session-data (connection))
 (defgeneric init-audio (connection controller))
 (defun get-controller (connection)
