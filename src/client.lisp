@@ -46,6 +46,7 @@
 (defmethod send-init-message ((instance connection)
 			      &key
 				sample-rate
+				sample-width
 				channel-count
 				buffer-size-frames
 				omit-audio-output)
@@ -53,6 +54,7 @@
     (cl-java-sound-client-message:write-init-message
      (slot-value instance 'stream)
      :sample-rate sample-rate
+     :sample-width sample-width
      :channel-count channel-count
      :buffer-size-frames buffer-size-frames
      :omit-audio-output omit-audio-output)))
@@ -76,6 +78,7 @@
     (send-init-message
      instance
      :sample-rate (get-sample-rate controller)
+     :sample-width (get-sample-width controller)
      :channel-count (get-channel-count controller)
      :buffer-size-frames (get-buffer-size-frames instance)
      :omit-audio-output (get-omit-audio-output instance))
@@ -91,8 +94,9 @@
 	    (make-array (* (get-buffer-size-frames instance)
 			   (get-channel-count controller))))))
   (log-info
-   "Server has accepted audio settings sample-rate=~a channel-count=~a"
+   "Server has accepted audio settings sample-rate=~a sample-width=~a channel-count=~a"
    (get-sample-rate controller)
+   (get-sample-width controller)
    (get-channel-count controller)))
   
 (defmethod start-message-loop ((instance connection))

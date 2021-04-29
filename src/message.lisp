@@ -129,6 +129,10 @@
   ;; signed short 2 bytes DataInputStream readShort
   (lisp-binary:write-integer command-id 2 stream :byte-order :big-endian :signed t))
 
+(defun write-sample-width (stream sample-width)
+  ;; signed short 2 bytes DataInputStream readShort
+  (lisp-binary:write-integer sample-width 2 stream :byte-order :big-endian :signed t))
+
 (defun read-message-type (stream)
   ;; signed short 2 bytes DataInputStream readShort
   (lisp-binary:read-integer 2 stream :byte-order :big-endian :signed t))
@@ -204,19 +208,20 @@
 ;;
 ;;
 
-(defun write-init-message (stream &key sample-rate channel-count buffer-size-frames
+(defun write-init-message (stream &key sample-rate sample-width channel-count buffer-size-frames
 				    omit-audio-output)
   (write-marker stream *START-OF-MESSAGE-MARKER*)
   (write-message-type stream +MESSAGE-TYPE-INIT+)
   (write-sample-rate stream sample-rate)
+  (write-sample-width stream sample-width)
   (write-channel-count stream channel-count)
   (write-buffer-size-frames stream buffer-size-frames)
   (write-omit-audio-output stream omit-audio-output)
   (write-marker stream *END-OF-MESSAGE-MARKER*)
   (force-output stream)
   (log-trace
-   "Outbound: InitMessage{sample-rate=~a, channel-count=~a, buffer-size-frames=~a, omit-audio-output=~a}"
-   sample-rate channel-count buffer-size-frames omit-audio-output))
+   "Outbound: InitMessage{sample-rate=~a, sample-width=~a channel-count=~a, buffer-size-frames=~a, omit-audio-output=~a}"
+   sample-rate sample-width channel-count buffer-size-frames omit-audio-output))
 
 (defun write-start-message (stream)
   (write-marker stream *START-OF-MESSAGE-MARKER*)
