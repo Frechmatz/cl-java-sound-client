@@ -46,7 +46,7 @@
    (let ((my-controller
 	   (make-instance
 	    'throughput-controller
-	    :duration-seconds 5
+	    :duration-seconds 3600
 	    :sample-rate 44100
 	    :sample-width 2
 	    :channel-count 2)))
@@ -54,7 +54,7 @@
 	      :port 9000
 	      :host "localhost"
 	      :buffer-size-frames 10000
-	      :omit-audio-output nil)
+	      :omit-audio-output t)
      (run my-controller))))
 
 ;;(main)
