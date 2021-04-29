@@ -54,6 +54,7 @@
 
 
 (defun main ()
+  (setf cl-java-sound-client-logger:*log-level* :trace)
   (time
    (let ((my-controller
 	   (make-instance
@@ -65,8 +66,7 @@
      (connect my-controller
 	      :port 9000
 	      :host "localhost"
-	      :buffer-size-frames 10000
-	      :omit-audio-output nil)
+	      :buffer-size-frames 10000)
      (run my-controller))))
 
 ;;(main)

@@ -192,28 +192,12 @@
 	       (list
 		:message-type message-type
 		:buffer-size-frames (read-buffer-size-frames stream)))
-	      ((init-message-type-p message-type)
-	       (error 'simple-error
-		      :format-control "Frames message not supported ~a"
-		      :format-arguments (list message-type)))
-	      ((stop-message-type-p message-type)
-	       (error 'simple-error
-		      :format-control "Stop message not supported ~a"
-		      :format-arguments (list message-type)))
-	      ((start-message-type-p message-type)
-	       (error 'simple-error
-		      :format-control "Start message not supported ~a"
-		      :format-arguments (list message-type)))
-	      ((close-message-type-p message-type)
-	       (error 'simple-error
-		      :format-control "Close message not supported ~a"
-		      :format-arguments (list message-type)))
 	      (t
 	       (error 'simple-error
 		      :format-control "Unsupported message type ~a"
 		      :format-arguments (list message-type))))))
       (read-marker stream *END-OF-MESSAGE-MARKER*)
-      (format t "~%Inbound: ~a" message)
+      (log-trace "Inbound: ~a" message)
       message)))
 
 ;;
@@ -230,9 +214,8 @@
   (write-omit-audio-output stream omit-audio-output)
   (write-marker stream *END-OF-MESSAGE-MARKER*)
   (force-output stream)
-  (format
-   t
-   "~%Outbound: InitMessage{sample-rate=~a, channel-count=~a, buffer-size-frames=~a, omit-audio-output=~a}"
+  (log-trace
+   "Outbound: InitMessage{sample-rate=~a, channel-count=~a, buffer-size-frames=~a, omit-audio-output=~a}"
    sample-rate channel-count buffer-size-frames omit-audio-output))
 
 (defun write-start-message (stream)
@@ -240,21 +223,21 @@
   (write-message-type stream +MESSAGE-TYPE-START+)
   (write-marker stream *END-OF-MESSAGE-MARKER*)
   (force-output stream)
-  (format t "~%Outbound: StartMessage{}"))
+  (log-trace "Outbound: StartMessage{}"))
   
 (defun write-stop-message (stream)
   (write-marker stream *START-OF-MESSAGE-MARKER*)
   (write-message-type stream +MESSAGE-TYPE-STOP+)
   (write-marker stream *END-OF-MESSAGE-MARKER*)
   (force-output stream)
-  (format t "~%Outbound: StopMessage{}"))
+  (log-trace "Outbound: StopMessage{}"))
 
 (defun write-close-message (stream)
   (write-marker stream *START-OF-MESSAGE-MARKER*)
   (write-message-type stream +MESSAGE-TYPE-CLOSE+)
   (write-marker stream *END-OF-MESSAGE-MARKER*)
   (force-output stream)
-  (format t "~%Outbound: CloseMessage{}"))
+  (log-trace "Outbound: CloseMessage{}"))
 
 (defun write-frames-message
     (stream
@@ -273,5 +256,5 @@
       (write-sample stream (elt samples i)))
     (write-marker stream *END-OF-MESSAGE-MARKER*)
     (force-output stream)
-    (format t "~%Outbound: FramesMessage{sample-data-length=~a}" byte-count)))
+    (log-trace "Outbound: FramesMessage{sample-data-length=~a}" byte-count)))
 

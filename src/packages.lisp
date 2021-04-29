@@ -1,3 +1,11 @@
+(defpackage :cl-java-sound-client-logger
+  (:use :cl)
+  (:export
+   :*log-level*
+   :log-info
+   :log-trace
+   :log-error))
+
 (defpackage :cl-java-sound-client
   (:use :cl)
   (:export
@@ -16,8 +24,9 @@
    :notify-connection-closed
    :notify-connection-established))
 
+
 (defpackage :cl-java-sound-client-message
-  (:use :cl)
+  (:use :cl :cl-java-sound-client-logger)
   (:export
    :read-message
    :write-init-message
