@@ -1,11 +1,9 @@
 (in-package :cl-java-sound-client-logger)
 
-(defparameter *log-level* :trace)
-
-(defparameter *log-error-p* (lambda() t))
 (defparameter *log-trace-p* (lambda() nil))
-(defparameter *log-info-p* (lambda() t))
 (defparameter *log-debug-p* (lambda() nil))
+(defparameter *log-info-p* (lambda() t))
+(defparameter *log-error-p* (lambda() t))
 
 (defun set-log-level (level)
   (cond
