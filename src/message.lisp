@@ -72,20 +72,6 @@
 (defun ackinit-message-p (message-type)
   (ackinit-message-type-p (getf message-type :message-type)))
 
-;;
-;; Write a sample in 16bit signed big-endian format
-;;
-(defun write-sample-16bit-signed-big-endian (stream sample)
-  "Sample: -1.0...1.0"
-  (setf sample (round (* 32768 sample)))
-  (if (< 32767 sample)
-      (setf sample 32767)
-      (if (< sample -32768)
-	  (setf sample -32768)))
-  (when (< sample 0) (incf sample 65536))
-  (write-byte (ldb (byte 8 8) sample) stream)
-  (write-byte (ldb (byte 8 0) sample) stream))
-
 (defun write-channel-count (stream channel-count)
   ;; signed short 2 bytes DataInputStream readShort
   (lisp-binary:write-integer channel-count 2 stream :byte-order :big-endian :signed t))
@@ -221,7 +207,7 @@
   (force-output stream)
   (log-trace "Outbound: CloseMessage{}"))
 
-(defun write-frames-message
+(defun write-frames-message-16bit-signed-big-endian
     (stream
      &key
        sample-width
@@ -230,12 +216,20 @@
   "samples: Float-Array holding samples to be written.
    sample-count: Number of samples to be read from samples array.
    sample-width: Sample width in bytes, e.g. 2"
-  (let ((byte-count (* sample-width sample-count)))
+  (let ((byte-count (* sample-width sample-count)) (sample 0))
     (write-marker stream *START-OF-MESSAGE-MARKER*)
     (write-message-type stream +MESSAGE-TYPE-FRAMES+)
     (write-sample-data-length stream byte-count)
     (dotimes (i sample-count)
-      (write-sample-16bit-signed-big-endian stream (elt samples i)))
+      (setf sample (round (* 32768 (elt samples i))))
+      (if (< 32767 sample)
+	  (setf sample 32767)
+	  (if (< sample -32768)
+	      (setf sample -32768)))
+      (when (< sample 0) (incf sample 65536))
+      (write-byte (ldb (byte 8 8) sample) stream)
+      (write-byte (ldb (byte 8 0) sample) stream)
+      )
     (write-marker stream *END-OF-MESSAGE-MARKER*)
     (force-output stream)
     (log-trace "Outbound: FramesMessage{sample-data-length=~a}" byte-count)))

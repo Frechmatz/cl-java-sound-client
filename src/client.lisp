@@ -36,7 +36,7 @@
 	  controller
 	  (get-buffer-size-frames instance)
 	  (get-sample-buffer instance))))
-	(cl-java-sound-client-message:write-frames-message
+	(cl-java-sound-client-message:write-frames-message-16bit-signed-big-endian
 	 (slot-value instance 'stream)
 	 :samples (get-sample-buffer instance)
 	 :sample-width (get-sample-width controller)
