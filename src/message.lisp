@@ -76,17 +76,8 @@
 ;;
 ;;
 
-(defmacro clip-value (value)
-  `(cond
-    ((> ,value 1.0)
-     1.0)
-    ((< ,value -1.0)
-     -1.0)
-    (t ,value)))
-
 (defun value-to-16bit-signed (value)
   "value: -1.0 ... 1.0"
-  (setf value (clip-value value))
   (setf value (round (* 32768 value)))
   (cond
     ((< 32767 value)
