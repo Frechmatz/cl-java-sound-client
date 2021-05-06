@@ -75,15 +75,13 @@
 ;;
 ;; Write a sample in 16bit signed big-endian format
 ;;
-;;
 (defun write-sample-16bit-signed-big-endian (stream sample)
   "Sample: -1.0...1.0"
   (setf sample (round (* 32768 sample)))
-  (cond
-    ((< 32767 sample)
-     (setf sample 32767))
-    ((< sample -32768)
-     (setf sample -32768)))
+  (if (< 32767 sample)
+      (setf sample 32767)
+      (if (< sample -32768)
+	  (setf sample -32768)))
   (when (< sample 0) (incf sample 65536))
   (write-byte (ldb (byte 8 8) sample) stream)
   (write-byte (ldb (byte 8 0) sample) stream))
