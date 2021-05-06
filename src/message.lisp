@@ -73,32 +73,20 @@
   (ackinit-message-type-p (getf message-type :message-type)))
 
 ;;
-;;
-;;
-
-(defun value-to-16bit-signed (value)
-  "value: -1.0 ... 1.0"
-  (setf value (round (* 32768 value)))
-  (cond
-    ((< 32767 value)
-     32767)
-    ((< value -32768)
-     -32768)
-    (t
-     value)))
-
-;;
 ;; Write a sample in 16bit signed big-endian format
 ;;
-;; TODO Optimize / Re-think implementation of value-to-16bit-signed
-;; because it consumes a lot of CPU
 ;;
 (defun write-sample-16bit-signed-big-endian (stream sample)
   "Sample: -1.0...1.0"
-  (let ((s16 (value-to-16bit-signed sample)))
-    (when (< s16 0) (incf s16 (expt 2 (* 2 8))))
-    (write-byte (ldb (byte 8 8) s16) stream)
-    (write-byte (ldb (byte 8 0) s16) stream)))
+  (setf sample (round (* 32768 sample)))
+  (cond
+    ((< 32767 sample)
+     (setf sample 32767))
+    ((< sample -32768)
+     (setf sample -32768)))
+  (when (< sample 0) (incf sample 65536))
+  (write-byte (ldb (byte 8 8) sample) stream)
+  (write-byte (ldb (byte 8 0) sample) stream))
 
 (defun write-channel-count (stream channel-count)
   ;; signed short 2 bytes DataInputStream readShort
