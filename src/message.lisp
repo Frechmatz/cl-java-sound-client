@@ -134,7 +134,7 @@
   (write-omit-audio-output stream omit-audio-output)
   (write-marker stream *END-OF-MESSAGE-MARKER*)
   (force-output stream)
-  (log-debug
+  (log-info 
    "Outbound: InitMessage{sample-rate=~a, sample-width=~a channel-count=~a, buffer-size-frames=~a, omit-audio-output=~a}"
    sample-rate sample-width channel-count buffer-size-frames omit-audio-output))
 
