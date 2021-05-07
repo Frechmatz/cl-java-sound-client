@@ -54,17 +54,18 @@
 
 
 (defun main ()
-   (let ((my-controller
-	   (make-instance
-	    'example-controller
-	    :duration-seconds 5
-	    :sample-rate 44100
-	    :sample-width 2
-	    :channel-count 2)))
-     (connect my-controller
-	      :port 9000
-	      :host "localhost"
-	      :buffer-size-frames 10000)
-     (run my-controller)))
+  (cl-java-sound-client-logger:set-log-level :debug)
+  (let ((my-controller
+	  (make-instance
+	   'example-controller
+	   :duration-seconds 5
+	   :sample-rate 44100
+	   :sample-width 2
+	   :channel-count 2)))
+    (connect my-controller
+	     :port 9000
+	     :host "localhost"
+	     :buffer-size-frames 10000)
+    (run my-controller)))
 
 ;;(main)
