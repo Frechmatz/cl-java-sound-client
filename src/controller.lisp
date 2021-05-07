@@ -3,7 +3,7 @@
 (defclass controller ()
   ((connection :initform nil)
    (channel-count :initarg :channel-count)
-   (sample-width :initarg :sample-width :initform 2)
+   (sample-width :initarg :sample-width :initform :16Bit)
    (sample-rate :initarg :sample-rate :initform 44100)))
 
 (defgeneric stop (controller)

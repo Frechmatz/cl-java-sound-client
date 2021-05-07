@@ -54,13 +54,13 @@
 
 
 (defun main ()
-  (cl-java-sound-client-logger:set-log-level :debug)
+  (cl-java-sound-client-logger:set-log-level :info)
   (let ((my-controller
 	  (make-instance
 	   'example-controller
 	   :duration-seconds 5
 	   :sample-rate 44100
-	   :sample-width 2
+	   :sample-width :16Bit
 	   :channel-count 2)))
     (connect my-controller
 	     :port 9000

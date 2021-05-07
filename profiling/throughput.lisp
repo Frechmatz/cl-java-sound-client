@@ -48,7 +48,7 @@
 	    'throughput-controller
 	    :duration-seconds 3600
 	    :sample-rate 44100
-	    :sample-width 2
+	    :sample-width :16Bit
 	    :channel-count 2)))
      (connect my-controller
 	      :port 9000

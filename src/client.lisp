@@ -4,6 +4,17 @@
 ;; Connection
 ;;
 
+(defun sample-width-to-sample-width-bytes (sample-width)
+  (cond
+    ((eq :8Bit sample-width) 1)
+    ((eq :16Bit sample-width) 2)
+    ((eq :24Bit sample-width) 3)
+    (t
+     (error 'simple-error
+	    :format-control "Unsupported sample-width: ~a (must be one of :8Bit :16Bit :24Bit)"
+	    :format-arguments (list sample-width)))))
+    
+
 (defmethod initialize-instance :after ((instance connection) &rest args)
   (declare (ignore args))
   (setf (slot-value instance 'socket)
@@ -28,6 +39,19 @@
     (cl-java-sound-client-message:write-stop-message
      (slot-value instance 'stream))))
 
+(defun dispatch-send-frames (stream sample-width sample-buffer sample-count)
+  "Dispatch frames writing to the appropriate message writer function"
+  (cond
+    ((eq :16Bit sample-width)
+     (cl-java-sound-client-message:write-frames-message-float-to-16bit-signed
+      stream
+      :samples sample-buffer
+      :sample-count sample-count))
+    (t
+     (error 'simple-error
+	    :format-control "Unsupported sample-width: ~a"
+	    :format-arguments (list sample-width)))))
+
 (defmethod send-frames-message ((instance connection))
   (bt:with-lock-held ((slot-value instance 'send-message-lock))
     (let ((controller (get-controller instance)))
@@ -36,24 +60,25 @@
 	  controller
 	  (get-buffer-size-frames instance)
 	  (get-sample-buffer instance))))
-	(cl-java-sound-client-message:write-frames-message-float-to-16bit-signed
+	(dispatch-send-frames
 	 (slot-value instance 'stream)
-	 :samples (get-sample-buffer instance)
-	 :sample-count (* (get-channel-count controller)
-			  rendered-frame-count))))))
+	 (get-sample-width controller)
+	 (get-sample-buffer instance)
+	 (* (get-channel-count controller) rendered-frame-count))))))
 
-(defmethod send-init-message ((instance connection)
-			      &key
-				sample-rate
-				sample-width
-				channel-count
-				buffer-size-frames
-				omit-audio-output)
+(defmethod send-init-message
+    ((instance connection)
+     &key
+       sample-rate
+       sample-width
+       channel-count
+       buffer-size-frames
+       omit-audio-output)
   (bt:with-lock-held ((slot-value instance 'send-message-lock))
     (cl-java-sound-client-message:write-init-message
      (slot-value instance 'stream)
      :sample-rate sample-rate
-     :sample-width sample-width
+     :sample-width (sample-width-to-sample-width-bytes sample-width)
      :channel-count channel-count
      :buffer-size-frames buffer-size-frames
      :omit-audio-output omit-audio-output)))
