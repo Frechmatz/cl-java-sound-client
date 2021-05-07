@@ -10,67 +10,36 @@
 (defconstant +MESSAGE-TYPE-CLOSE+ 8)
 (defconstant +MESSAGE-TYPE-ACKINIT+ 9)
 
-;;
-;;
-;;
+(defun ack-message-p (message)
+  (= +MESSAGE-TYPE-ACK+ (getf message :message-type)))
 
-(defun ack-message-type-p (message-type)
-  (= message-type +MESSAGE-TYPE-ACK+))
+(defun nak-message-p (message)
+  (= +MESSAGE-TYPE-NAK+ (getf message :message-type)))
 
-(defun nak-message-type-p (message-type)
-  (= message-type +MESSAGE-TYPE-NAK+))
+(defun frames-message-p (message)
+  (= +MESSAGE-TYPE-FRAMES+ (getf message :message-type)))
 
-(defun frames-message-type-p (message-type)
-  (= message-type +MESSAGE-TYPE-FRAMES+))
+(defun get-frames-message-p (message)
+  (= +MESSAGE-TYPE-GET-FRAMES+ (getf message :message-type)))
 
-(defun get-frames-message-type-p (message-type)
-  (= message-type +MESSAGE-TYPE-GET-FRAMES+))
+(defun init-message-p (message)
+  (= +MESSAGE-TYPE-INIT+ (getf message :message-type)))
 
-(defun init-message-type-p (message-type)
-  (= message-type +MESSAGE-TYPE-INIT+))
+(defun stop-message-p (message)
+  (= +MESSAGE-TYPE-STOP+ (getf message :message-type)))
 
-(defun stop-message-type-p (message-type)
-  (= message-type +MESSAGE-TYPE-STOP+))
+(defun start-message-p (message)
+  (= +MESSAGE-TYPE-START+ (getf message :message-type)))
 
-(defun start-message-type-p (message-type)
-  (= message-type +MESSAGE-TYPE-START+))
+(defun close-message-p (message)
+  (= +MESSAGE-TYPE-CLOSE+ (getf message :message-type)))
 
-(defun close-message-type-p (message-type)
-  (= message-type +MESSAGE-TYPE-CLOSE+))
-
-(defun ackinit-message-type-p (message-type)
-  (= message-type +MESSAGE-TYPE-ACKINIT+))
+(defun ackinit-message-p (message)
+  (= +MESSAGE-TYPE-ACKINIT+ (getf message :message-type)))
 
 ;;
 ;;
 ;;
-
-(defun ack-message-p (message-type)
-  (ack-message-type-p (getf message-type :message-type)))
-
-(defun nak-message-p (message-type)
-  (nak-message-type-p (getf message-type :message-type)))
-
-(defun frames-message-p (message-type)
-  (frames-message-type-p (getf message-type :message-type)))
-
-(defun get-frames-message-p (message-type)
-  (get-frames-message-type-p (getf message-type :message-type)))
-
-(defun init-message-p (message-type)
-  (init-message-type-p (getf message-type :message-type)))
-
-(defun stop-message-p (message-type)
-  (stop-message-type-p (getf message-type :message-type)))
-
-(defun start-message-p (message-type)
-  (start-message-type-p (getf message-type :message-type)))
-
-(defun close-message-p (message-type)
-  (close-message-type-p (getf message-type :message-type)))
-
-(defun ackinit-message-p (message-type)
-  (ackinit-message-type-p (getf message-type :message-type)))
 
 (defun write-channel-count (stream channel-count)
   ;; signed short 2 bytes DataInputStream readShort
@@ -125,14 +94,14 @@
    :element-type '(unsigned-byte 8)
    :initial-contents '(4 3 2 1)))
 
-(defun write-marker (stream arr)
-  (dotimes (i (length arr))
-    (write-byte (elt arr i) stream)))
+(defun write-marker (stream marker)
+  (dotimes (i (length marker))
+    (write-byte (elt marker i) stream)))
 
-(defun read-marker (stream arr)
-  (dotimes (i (length arr))
+(defun read-marker (stream marker)
+  (dotimes (i (length marker))
     (let ((b (read-byte stream)))
-      (if (not (eql b (elt arr i)))
+      (if (not (eql b (elt marker i)))
 	  (error "Invalid Start/End-Of-Message Marker")))))
 
 ;;
@@ -141,31 +110,14 @@
 
 (defun read-message (stream)
   (read-marker stream *START-OF-MESSAGE-MARKER*)
-  (let ((message-type (read-message-type stream)))
-    (let ((message
-	    (cond
-	      ((ack-message-type-p message-type)
-	       (list :message-type message-type))
-	      ((nak-message-type-p message-type)
-	       (list :message-type message-type))
-	      ((get-frames-message-type-p message-type)
-	       (list
-		:message-type message-type))
-	      ((frames-message-type-p message-type)
-	       (error 'simple-error 
-		      :format-control "Frames message not supported ~a"
-		      :format-arguments (list message-type)))
-	      ((ackinit-message-type-p message-type)
-	       (list
-		:message-type message-type
-		:buffer-size-frames (read-buffer-size-frames stream)))
-	      (t
-	       (error 'simple-error
-		      :format-control "Unsupported message type ~a"
-		      :format-arguments (list message-type))))))
-      (read-marker stream *END-OF-MESSAGE-MARKER*)
-      (log-trace "Inbound: ~a" message)
-      message)))
+  (let ((message (list :message-type (read-message-type stream))))
+    (log-trace "Read message type: ~a" (getf message :message-type))
+    (if (ackinit-message-p message)
+	(setf (getf message :buffer-size-frames) (read-buffer-size-frames stream)))
+    ;; Let unsupported message payloads fail here
+    (read-marker stream *END-OF-MESSAGE-MARKER*)
+    (log-debug "Inbound: ~a" message)
+    message))
 
 ;;
 ;;
@@ -182,7 +134,7 @@
   (write-omit-audio-output stream omit-audio-output)
   (write-marker stream *END-OF-MESSAGE-MARKER*)
   (force-output stream)
-  (log-trace
+  (log-debug
    "Outbound: InitMessage{sample-rate=~a, sample-width=~a channel-count=~a, buffer-size-frames=~a, omit-audio-output=~a}"
    sample-rate sample-width channel-count buffer-size-frames omit-audio-output))
 
@@ -191,21 +143,21 @@
   (write-message-type stream +MESSAGE-TYPE-START+)
   (write-marker stream *END-OF-MESSAGE-MARKER*)
   (force-output stream)
-  (log-trace "Outbound: StartMessage{}"))
+  (log-debug "Outbound: StartMessage{}"))
   
 (defun write-stop-message (stream)
   (write-marker stream *START-OF-MESSAGE-MARKER*)
   (write-message-type stream +MESSAGE-TYPE-STOP+)
   (write-marker stream *END-OF-MESSAGE-MARKER*)
   (force-output stream)
-  (log-trace "Outbound: StopMessage{}"))
+  (log-debug "Outbound: StopMessage{}"))
 
 (defun write-close-message (stream)
   (write-marker stream *START-OF-MESSAGE-MARKER*)
   (write-message-type stream +MESSAGE-TYPE-CLOSE+)
   (write-marker stream *END-OF-MESSAGE-MARKER*)
   (force-output stream)
-  (log-trace "Outbound: CloseMessage{}"))
+  (log-debug "Outbound: CloseMessage{}"))
 
 (defun write-frames-message-16bit-signed-big-endian
     (stream
@@ -228,9 +180,8 @@
 	      (setf sample -32768)))
       (when (< sample 0) (incf sample 65536))
       (write-byte (ldb (byte 8 8) sample) stream)
-      (write-byte (ldb (byte 8 0) sample) stream)
-      )
+      (write-byte (ldb (byte 8 0) sample) stream))
     (write-marker stream *END-OF-MESSAGE-MARKER*)
     (force-output stream)
-    (log-trace "Outbound: FramesMessage{sample-data-length=~a}" byte-count)))
+    (log-debug "Outbound: FramesMessage{sample-data-length=~a}" byte-count)))
 
