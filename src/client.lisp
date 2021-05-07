@@ -65,23 +65,6 @@
 	 (get-sample-width controller)
 	 (get-sample-buffer instance)
 	 (* (get-channel-count controller) rendered-frame-count))))))
-
-(defmethod send-init-message
-    ((instance connection)
-     &key
-       sample-rate
-       sample-width
-       channel-count
-       buffer-size-frames
-       omit-audio-output)
-  (bt:with-lock-held ((slot-value instance 'send-message-lock))
-    (cl-java-sound-client-message:write-init-message
-     (slot-value instance 'stream)
-     :sample-rate sample-rate
-     :sample-width (sample-width-to-sample-width-bytes sample-width)
-     :channel-count channel-count
-     :buffer-size-frames buffer-size-frames
-     :omit-audio-output omit-audio-output)))
   
 (defmethod send-close-message ((instance connection))
   (bt:with-lock-held ((slot-value instance 'send-message-lock))
@@ -97,15 +80,21 @@
 	(write-sequence data stream)
 	(force-output stream)))))
 
-(defmethod init-audio ((instance connection) controller)
-  (let ((stream (slot-value instance 'stream)))
-    (send-init-message
-     instance
-     :sample-rate (get-sample-rate controller)
-     :sample-width (get-sample-width controller)
-     :channel-count (get-channel-count controller)
-     :buffer-size-frames (get-buffer-size-frames instance)
-     :omit-audio-output (get-omit-audio-output instance))
+(defmethod send-init-message ((instance connection))
+  (bt:with-lock-held ((slot-value instance 'send-message-lock))
+    (let ((controller (slot-value instance 'controller)))
+      (cl-java-sound-client-message:write-init-message
+       (slot-value instance 'stream)
+       :sample-rate (get-sample-rate controller)
+       :sample-width (sample-width-to-sample-width-bytes (get-sample-width controller))
+       :channel-count (get-channel-count controller)
+       :buffer-size-frames (get-buffer-size-frames instance)
+       :omit-audio-output (get-omit-audio-output instance)))))
+
+(defmethod init-audio ((instance connection))
+  (let ((stream (slot-value instance 'stream))
+	(controller (slot-value instance 'controller)))
+    (send-init-message instance)
     (let ((message (cl-java-sound-client-message:read-message stream)))
       (if (not (cl-java-sound-client-message:ackinit-message-p message))
 	  (error 'simple-error
@@ -116,21 +105,15 @@
 	    (getf message :buffer-size-frames))
       (setf (slot-value instance 'sample-buffer)
 	    (make-array (* (get-buffer-size-frames instance)
-			   (get-channel-count controller))))))
-  (log-info
-   "Server has accepted audio settings sample-rate=~a sample-width=~a channel-count=~a omit-audio-output=~a buffer-size-frames=~a"
-   (get-sample-rate controller)
-   (get-sample-width controller)
-   (get-channel-count controller)
-   (get-omit-audio-output instance)
-   (get-buffer-size-frames instance)))
+			   (get-channel-count controller)))))
+    (log-info "Server has accepted InitMessage")))
   
 (defmethod start-message-loop ((instance connection))
   (let ((stream (slot-value instance 'stream))
 	(controller (slot-value instance 'controller)))
     (handler-case
 	(progn
-	  (init-audio instance controller)
+	  (init-audio instance)
 	  (notify-connection-established controller)
 	  (send-start-message instance)
 	  (loop

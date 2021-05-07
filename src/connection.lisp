@@ -15,15 +15,9 @@
 (defgeneric send-start-message (connection))
 (defgeneric send-stop-message (connection))
 (defgeneric send-frames-message (connection))
-(defgeneric send-init-message
-    (connection
-     &key
-       sample-rate
-       channel-count
-       buffer-size-frames
-       omit-audio-output))
+(defgeneric send-init-message (connection))
 (defgeneric send-init-session-data (connection))
-(defgeneric init-audio (connection controller))
+(defgeneric init-audio (connection))
 (defun get-controller (connection)
   (slot-value connection 'controller))
 (defun get-sample-buffer (connection)
