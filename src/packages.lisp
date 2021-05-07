@@ -34,7 +34,7 @@
    :write-start-message
    :write-stop-message
    :write-close-message
-   :write-frames-message-16bit-signed-big-endian
+   :write-frames-message-float-to-16bit-signed
    :write-sample
    :ack-message-p
    :nak-message-p

@@ -159,16 +159,14 @@
   (force-output stream)
   (log-debug "Outbound: CloseMessage{}"))
 
-(defun write-frames-message-16bit-signed-big-endian
+(defun write-frames-message-float-to-16bit-signed
     (stream
      &key
-       sample-width
        sample-count
        samples)
-  "samples: Float-Array holding samples to be written.
-   sample-count: Number of samples to be read from samples array.
-   sample-width: Sample width in bytes, e.g. 2"
-  (let ((byte-count (* sample-width sample-count)) (sample 0))
+  "samples: Array of floating point numbers holding the samples.
+   sample-count: Number of samples to be written."
+  (let ((byte-count (* 2 sample-count)) (sample 0))
     (write-marker stream *START-OF-MESSAGE-MARKER*)
     (write-message-type stream +MESSAGE-TYPE-FRAMES+)
     (write-sample-data-length stream byte-count)

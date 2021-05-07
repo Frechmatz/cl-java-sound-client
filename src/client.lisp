@@ -36,10 +36,9 @@
 	  controller
 	  (get-buffer-size-frames instance)
 	  (get-sample-buffer instance))))
-	(cl-java-sound-client-message:write-frames-message-16bit-signed-big-endian
+	(cl-java-sound-client-message:write-frames-message-float-to-16bit-signed
 	 (slot-value instance 'stream)
 	 :samples (get-sample-buffer instance)
-	 :sample-width (get-sample-width controller)
 	 :sample-count (* (get-channel-count controller)
 			  rendered-frame-count))))))
 
