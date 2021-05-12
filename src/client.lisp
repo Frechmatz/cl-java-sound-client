@@ -74,9 +74,11 @@
 (defmethod send-init-session-data ((instance connection))
   (bt:with-lock-held ((slot-value instance 'send-message-lock))
     (let ((stream (slot-value instance 'stream)))
-      (let ((data (make-array 128 :element-type '(unsigned-byte 8) :initial-element 0)))
+      (let ((data (make-array 16 :element-type '(unsigned-byte 8) :initial-element 0)))
+	;; Version 1.0.0
 	(setf (aref data 0) 1)
-	(setf (aref data 1) 1)
+	(setf (aref data 1) 0)
+	(setf (aref data 2) 0)
 	(write-sequence data stream)
 	(force-output stream)))))
 
