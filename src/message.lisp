@@ -1,7 +1,5 @@
 (in-package :cl-java-sound-client-message)
 
-(defconstant +MESSAGE-TYPE-ACK+ 1)
-(defconstant +MESSAGE-TYPE-NAK+ 2)
 (defconstant +MESSAGE-TYPE-FRAMES+ 3)
 (defconstant +MESSAGE-TYPE-GET-FRAMES+ 4)
 (defconstant +MESSAGE-TYPE-INIT+ 5)
@@ -9,12 +7,6 @@
 (defconstant +MESSAGE-TYPE-START+ 7)
 (defconstant +MESSAGE-TYPE-CLOSE+ 8)
 (defconstant +MESSAGE-TYPE-ACKINIT+ 9)
-
-(defun ack-message-p (message)
-  (= +MESSAGE-TYPE-ACK+ (getf message :message-type)))
-
-(defun nak-message-p (message)
-  (= +MESSAGE-TYPE-NAK+ (getf message :message-type)))
 
 (defun frames-message-p (message)
   (= +MESSAGE-TYPE-FRAMES+ (getf message :message-type)))
