@@ -80,7 +80,12 @@
 	(setf (aref data 1) 0)
 	(setf (aref data 2) 0)
 	(write-sequence data stream)
-	(force-output stream)))))
+	(force-output stream))
+      (let ((b (read-byte stream)))
+	(if (not (eql 0 b))
+	    (error 'simple-error
+		   :format-control "Session initialization data rejected by server: ~a"
+		   :format-arguments (list b)))))))
 
 (defmethod send-init-message ((instance connection))
   (bt:with-lock-held ((slot-value instance 'send-message-lock))
